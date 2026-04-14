@@ -10,6 +10,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
+import { ensureCurrentUserProfile } from '../services/profile';
 import { ClientCard } from '../components/ClientCard';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { type Client } from '../types';
@@ -93,7 +94,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      const result = await client.mutations.issueInvoice({
+      const issueInvoice = () => client.mutations.issueInvoice({
         clientId: selectedClient?.id,
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,
@@ -107,6 +108,12 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         includeAbn: includes.abn,
         includePayid: includes.payid,
       });
+
+      let result = await issueInvoice();
+      if (result.data?.errorCode === 'no_profile') {
+        await ensureCurrentUserProfile('AUD');
+        result = await issueInvoice();
+      }
 
       const data = result.data;
       if (data?.errorCode === 'limit_reached') {

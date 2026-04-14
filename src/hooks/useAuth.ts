@@ -10,7 +10,7 @@ import {
   fetchAuthSession,
   AuthError,
 } from 'aws-amplify/auth';
-import { ensureUserProfile } from '../services/profile';
+import { ensureCurrentUserProfile, ensureUserProfile } from '../services/profile';
 
 export interface AuthUser {
   userId: string;
@@ -40,6 +40,12 @@ export function useAuth() {
     try {
       const current = await getCurrentUser();
       setUser({ userId: current.userId, username: current.username });
+
+      try {
+        await ensureCurrentUserProfile('AUD');
+      } catch (err) {
+        console.warn('[useAuth] profile bootstrap failed', err);
+      }
     } catch {
       setUser(null);
     } finally {

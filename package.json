@@ -5,9 +5,9 @@
   "scripts": {
     "start": "expo start",
     "start:clear": "expo start --clear",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "android:clear": "expo start --android --clear",
-    "ios": "expo start --ios",
+    "ios": "expo run:ios",
     "ios:clear": "expo start --ios --clear",
     "web": "expo start --web",
     "ts-check": "tsc --noEmit"
@@ -24,6 +24,7 @@
     "aws-amplify": "^6.9.0",
     "expo": "~52.0.0",
     "expo-constants": "~17.0.0",
+    "expo-dev-client": "~5.0.20",
     "expo-file-system": "~18.0.0",
     "expo-linking": "~7.0.0",
     "expo-sharing": "~13.0.1",

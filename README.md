@@ -72,16 +72,30 @@ EXPO_PUBLIC_APP_URL=https://invoicesandexpenses.com  # or your dev URL
 
 ### 5. Start the app
 
-```bash
-# iOS simulator
-npm run ios
+Use a development build instead of Expo Go. Expo Go updates independently of your project SDK and can wipe local session state when it forces an upgrade.
 
-# Android emulator
-npm run android
+```bash
+# Build and install the development client once
+yarn android
+
+# Then start Metro for the installed dev client
+yarn start
+
+# iOS simulator
+yarn ios
 
 # Web browser
-npm run web
+yarn web
 ```
+
+If you need a cloud-built dev client instead of a local native build:
+
+```bash
+eas build --profile development --platform android
+eas build --profile development --platform ios
+```
+
+Avoid using `expo start --android` or `expo start --ios` for this app unless you explicitly want Expo Go.
 
 ---
 
