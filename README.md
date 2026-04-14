@@ -1,8 +1,14 @@
-# Invoices & Expenses — React Native + Amplify Gen 2
+# Invoices & Expenses — React Native Mobile App
 
-A full-stack mobile invoicing and expense tracking app for freelancers and contractors.
+A mobile invoicing and expense tracking app for freelancers and contractors.
 
-**Stack:** Expo (TypeScript) · AWS Amplify Gen 2 · Cognito Auth · AppSync/DynamoDB · Lambda (TypeScript) · AWS SES · Stripe · Claude AI
+**Stack:** Expo (TypeScript) · AWS Amplify client · Stripe · React Navigation
+
+The Amplify Gen 2 backend now lives in the sibling project:
+
+```bash
+../invoicesandexpensesbackend
+```
 
 ---
 
@@ -10,9 +16,8 @@ A full-stack mobile invoicing and expense tracking app for freelancers and contr
 
 | Tool | Version |
 |------|---------|
-| Node.js | ≥ 20 |
+| Node.js | 20 or 22 LTS |
 | Expo CLI | `npm i -g expo-cli` |
-| AWS Amplify CLI | `npm i -g @aws-amplify/backend-cli` |
 | AWS credentials | Configured via `aws configure` |
 
 ---
@@ -25,21 +30,23 @@ A full-stack mobile invoicing and expense tracking app for freelancers and contr
 npm install
 ```
 
-### 2. Start the Amplify sandbox
+### 2. Start the backend sandbox
 
-The sandbox deploys a personal cloud backend (your own DynamoDB tables, Lambda functions, Cognito pool) into your AWS account. It hot-reloads when you change files in `amplify/`.
+The sandbox deploys a personal cloud backend from the sibling backend project. It writes `amplify_outputs.json` back into this mobile app so Amplify can configure itself locally.
 
 ```bash
-npx ampx sandbox
+cd ../invoicesandexpensesbackend
+yarn sandbox
 ```
 
-This generates `amplify_outputs.json` in the project root. **This file is gitignored** — every developer runs their own sandbox.
+This generates `amplify_outputs.json` in the mobile project root. **This file is gitignored** — every developer runs their own sandbox.
 
 ### 3. Set secrets
 
 Secrets are stored in AWS Systems Manager Parameter Store. Set them once per sandbox:
 
 ```bash
+cd ../invoicesandexpensesbackend
 npx ampx sandbox secret set STRIPE_SECRET_KEY
 npx ampx sandbox secret set STRIPE_PRICE_ID
 npx ampx sandbox secret set STRIPE_WEBHOOK_SECRET
@@ -97,7 +104,8 @@ The Amplify backend deploys an API Gateway endpoint for Stripe webhooks. The URL
 Find it after deployment:
 ```bash
 # Sandbox
-npx ampx sandbox outputs
+cd ../invoicesandexpensesbackend
+yarn sandbox
 
 # Production
 aws cloudformation describe-stacks --stack-name <StackName> --query "Stacks[0].Outputs"
@@ -121,7 +129,8 @@ Stripe redirects back to `EXPO_PUBLIC_APP_URL/stripe-success` and `/stripe-cance
 
 ```bash
 # Deploy to a named branch (e.g. main)
-npx ampx pipeline-deploy --branch main --app-id <AmplifyAppId>
+cd ../invoicesandexpensesbackend
+yarn deploy --branch main --app-id <AmplifyAppId>
 ```
 
 Production secrets are set in the Amplify Console under **App settings → Secrets**.
@@ -180,7 +189,7 @@ npm run ts-check
 ## Setup checklist
 
 - [ ] `npm install`
-- [ ] `npx ampx sandbox` running and `amplify_outputs.json` generated
+- [ ] `yarn sandbox` running in `../invoicesandexpensesbackend` and `amplify_outputs.json` generated
 - [ ] All 7 secrets set via `npx ampx sandbox secret set`
 - [ ] SES sender email/domain verified
 - [ ] Stripe products/prices created; `STRIPE_PRICE_ID` set

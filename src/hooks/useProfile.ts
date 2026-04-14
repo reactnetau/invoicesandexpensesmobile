@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../types/amplify-schema';
 import type { UserProfile } from '../types';
 
 const client = generateClient<Schema>();

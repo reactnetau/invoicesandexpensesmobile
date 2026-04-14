@@ -8,7 +8,7 @@ import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../types/amplify-schema';
 
 const client = generateClient<Schema>();
 type Props = AuthScreenProps<'ConfirmSignup'>;

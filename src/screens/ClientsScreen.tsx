@@ -5,7 +5,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../../amplify/data/resource';
+import type { Schema } from '../types/amplify-schema';
 import type { TabScreenProps } from '../navigation/types';
 import { ClientCard } from '../components/ClientCard';
 import { EmptyState } from '../components/EmptyState';
