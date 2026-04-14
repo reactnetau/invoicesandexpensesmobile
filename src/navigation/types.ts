@@ -35,7 +35,7 @@ export type AppStackParamList = {
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   App: NavigatorScreenParams<AppStackParamList>;
-  PublicInvoice: { publicId: string };
+  PublicInvoice: { publicId?: string } | undefined;
 };
 
 // Screen prop helpers

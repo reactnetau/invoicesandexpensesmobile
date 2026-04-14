@@ -18,12 +18,18 @@ const client = generateClient<Schema>({ authMode: 'apiKey' });
 type Props = StackScreenProps<RootStackParamList, 'PublicInvoice'>;
 
 export function PublicInvoiceScreen({ route }: Props) {
-  const { publicId } = route.params;
+  const publicId = route.params?.publicId;
   const [loading, setLoading] = useState(true);
   const [invoice, setInvoice] = useState<any | null>(null);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    if (!publicId) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
     client.queries
       .getPublicInvoice({ publicId })
       .then((r) => {
@@ -39,7 +45,7 @@ export function PublicInvoiceScreen({ route }: Props) {
 
   if (loading) return <LoadingSpinner fullScreen message="Loading invoice…" />;
 
-  if (notFound || !invoice) {
+  if (notFound || !invoice || !publicId) {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.notFoundContainer}>

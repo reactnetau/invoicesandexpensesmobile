@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
+import { useAuth, parseAuthError, describeAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 
 type Props = AuthScreenProps<'Login'>;
@@ -36,6 +36,8 @@ export function LoginScreen({ navigation }: Props) {
       await login(email.trim().toLowerCase(), password);
       // RootNavigator re-renders when auth state changes
     } catch (err) {
+      console.error('[LoginScreen] sign in failed', err);
+      console.error('[LoginScreen] sign in details', JSON.stringify(describeAuthError(err), null, 2));
       const msg = parseAuthError(err);
       setError(msg);
     } finally {

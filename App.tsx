@@ -1,3 +1,5 @@
+import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
 import './src/config/amplify';
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';

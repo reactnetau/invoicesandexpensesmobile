@@ -31,7 +31,7 @@ export function useProfile() {
   const createProfile = useCallback(
     async (email: string, currency = 'USD'): Promise<UserProfile | null> => {
       try {
-        const result = await client.mutations.createUserProfile({ email, currency });
+        const result = await client.mutations.initializeUserProfile({ email, currency });
         if (result.data?.error) throw new Error(result.data.error);
         // Fetch the full profile after creation
         await fetchProfile();

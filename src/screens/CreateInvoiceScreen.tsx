@@ -84,7 +84,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     setLoading(true);
 
     try {
-      const result = await client.mutations.createInvoice({
+      const result = await client.mutations.issueInvoice({
         clientId: selectedClient?.id,
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,

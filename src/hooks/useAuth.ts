@@ -16,6 +16,21 @@ export interface AuthUser {
   username: string;
 }
 
+export function describeAuthError(err: unknown): Record<string, unknown> {
+  if (typeof err !== 'object' || err === null) {
+    return { value: err };
+  }
+
+  const error = err as Record<string, unknown>;
+  return {
+    name: error.name,
+    message: error.message,
+    recoverySuggestion: error.recoverySuggestion,
+    underlyingError: error.underlyingError,
+    cause: error.cause,
+  };
+}
+
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -37,7 +52,13 @@ export function useAuth() {
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
-      const result = await signIn({ username: email, password });
+      const result = await signIn({
+        username: email,
+        password,
+        options: {
+          authFlowType: 'USER_PASSWORD_AUTH',
+        },
+      });
       if (result.isSignedIn) {
         await refresh();
       }
@@ -111,8 +132,18 @@ export function useAuth() {
 }
 
 export function parseAuthError(err: unknown): string {
-  if (err instanceof AuthError) {
-    switch (err.name) {
+  const name = typeof err === 'object' && err !== null && 'name' in err ? String(err.name) : '';
+  const message =
+    typeof err === 'object' && err !== null && 'message' in err
+      ? String(err.message)
+      : '';
+  const recoverySuggestion =
+    typeof err === 'object' && err !== null && 'recoverySuggestion' in err
+      ? String(err.recoverySuggestion)
+      : '';
+
+  if (err instanceof AuthError || name) {
+    switch (name) {
       case 'UserAlreadyAuthenticatedException':
         return 'You are already signed in.';
       case 'UserNotConfirmedException':
@@ -132,7 +163,7 @@ export function parseAuthError(err: unknown): string {
       case 'InvalidPasswordException':
         return 'Password must be at least 8 characters.';
       default:
-        return err.message || 'An unexpected error occurred.';
+        return recoverySuggestion || message || 'An unexpected error occurred.';
     }
   }
   if (err instanceof Error) return err.message;

@@ -3,6 +3,7 @@ import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import * as Linking from 'expo-linking';
 import { getCurrentUser } from 'aws-amplify/auth';
+import { Hub } from 'aws-amplify/utils';
 
 import { RootStackParamList } from './types';
 import { AuthNavigator } from './AuthNavigator';
@@ -53,6 +54,19 @@ export function RootNavigator() {
     getCurrentUser()
       .then(() => setAuthState('authenticated'))
       .catch(() => setAuthState('unauthenticated'));
+
+    const unsubscribe = Hub.listen('auth', ({ payload }) => {
+      switch (payload.event) {
+        case 'signedIn':
+          setAuthState('authenticated');
+          break;
+        case 'signedOut':
+          setAuthState('unauthenticated');
+          break;
+      }
+    });
+
+    return unsubscribe;
   }, []);
 
   if (authState === 'loading') {
@@ -66,14 +80,14 @@ export function RootNavigator() {
   return (
     <NavigationContainer linking={linking}>
       <Root.Navigator screenOptions={{ headerShown: false }}>
-        {/* Public invoice — accessible without auth via deep link */}
-        <Root.Screen name="PublicInvoice" component={PublicInvoiceScreen} />
-
         {authState === 'authenticated' ? (
           <Root.Screen name="App" component={AppNavigator} />
         ) : (
           <Root.Screen name="Auth" component={AuthNavigator} />
         )}
+
+        {/* Public invoice — accessible without auth via deep link */}
+        <Root.Screen name="PublicInvoice" component={PublicInvoiceScreen} />
       </Root.Navigator>
     </NavigationContainer>
   );
