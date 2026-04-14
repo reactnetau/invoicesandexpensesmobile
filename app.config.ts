@@ -1,5 +1,7 @@
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_VARIANT ?? 'development';
 const isProductionBuild = buildProfile === 'production';
+const iosBuildNumber = process.env.IOS_BUILD_NUMBER ?? '1';
+const androidVersionCode = Number.parseInt(process.env.ANDROID_VERSION_CODE ?? '1', 10);
 const easProjectId =
   process.env.EAS_PROJECT_ID ??
   process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
@@ -38,7 +40,7 @@ export default {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.schmapps.invoicesandexpenses',
-      buildNumber: '1',
+      buildNumber: iosBuildNumber,
       config: {
         usesNonExemptEncryption: false,
       },
@@ -49,7 +51,7 @@ export default {
     },
     android: {
       package: 'com.schmapps.invoicesandexpenses',
-      versionCode: 1,
+      versionCode: Number.isFinite(androidVersionCode) ? androidVersionCode : 1,
       adaptiveIcon: {
         foregroundImage: './src/assets/schmappslogo.png',
         backgroundColor: '#EFF6FF',

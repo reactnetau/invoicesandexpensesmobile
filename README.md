@@ -134,11 +134,19 @@ The development profile builds for the iOS simulator.
 
 ### Build for TestFlight / App Store
 
+Increase `IOS_BUILD_NUMBER` before every upload. With dynamic Expo config, EAS cannot auto-increment this for you.
+
+```bash
+IOS_BUILD_NUMBER=2 yarn build:ios:appstore
+```
+
+Or set `IOS_BUILD_NUMBER` in your EAS environment variables, then run:
+
 ```bash
 yarn build:ios:appstore
 ```
 
-The production iOS profile increments the iOS build number automatically and excludes the dev-client plugin from the store build.
+The production iOS profile excludes the dev-client plugin from the store build.
 
 ### Submit to App Store Connect
 
