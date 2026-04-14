@@ -16,6 +16,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, globalStyles } from '../theme';
 import { formatCurrency } from '../utils/currency';
 import { type Expense } from '../types';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = TabScreenProps<'Expenses'>;
@@ -52,6 +53,9 @@ export function ExpensesScreen({ navigation }: Props) {
     try {
       await client.models.Expense.delete({ id: deleteTarget });
       setExpenses((prev) => prev.filter((e) => e.id !== deleteTarget));
+      enqueueSnackbar('Expense deleted', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Failed to delete expense', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to delete expense' });
     } finally {
       setDeleteLoading(false);
       setDeleteTarget(null);

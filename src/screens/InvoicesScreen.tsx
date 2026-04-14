@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, Alert,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { TabScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
+import { useSubscription } from '../providers/SubscriptionProvider';
 import { InvoiceCard } from '../components/InvoiceCard';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -16,20 +18,28 @@ import { ProModal } from '../components/ProModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, globalStyles } from '../theme';
 import { type Invoice, isPro, FREE_INVOICE_LIMIT } from '../types';
-import * as WebBrowser from 'expo-web-browser';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = TabScreenProps<'Invoices'>;
 
 export function InvoicesScreen({ navigation }: Props) {
   const { profile } = useProfile();
+  const {
+    currentPackage,
+    error: subscriptionError,
+    isSubscriptionActive,
+    purchaseCurrentPackage,
+    purchaseLoading,
+    restoreLoading,
+    restorePurchases,
+  } = useSubscription();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [proModalVisible, setProModalVisible] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     const result = await client.models.Invoice.list();
@@ -42,6 +52,12 @@ export function InvoicesScreen({ navigation }: Props) {
   useEffect(() => {
     loadInvoices().finally(() => setLoading(false));
   }, [loadInvoices]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadInvoices();
+    }, [loadInvoices])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -56,6 +72,7 @@ export function InvoicesScreen({ navigation }: Props) {
     setInvoices((prev) =>
       prev.map((i) => i.id === invoice.id ? { ...i, status: newStatus as any, paidAt } : i)
     );
+    enqueueSnackbar(newStatus === 'paid' ? 'Invoice marked as paid' : 'Invoice marked as unpaid', { variant: 'success' });
   };
 
   const handleDelete = async () => {
@@ -64,6 +81,7 @@ export function InvoicesScreen({ navigation }: Props) {
     try {
       await client.models.Invoice.delete({ id: deleteTarget });
       setInvoices((prev) => prev.filter((i) => i.id !== deleteTarget));
+      enqueueSnackbar('Invoice deleted', { variant: 'success' });
     } finally {
       setDeleteLoading(false);
       setDeleteTarget(null);
@@ -71,7 +89,7 @@ export function InvoicesScreen({ navigation }: Props) {
   };
 
   const handleCreateInvoice = () => {
-    const userIsPro = profile ? isPro(profile) : false;
+    const userIsPro = (profile ? isPro(profile) : false) || isSubscriptionActive;
     if (!userIsPro) {
       const thisMonth = new Date();
       thisMonth.setDate(1);
@@ -86,18 +104,23 @@ export function InvoicesScreen({ navigation }: Props) {
   };
 
   const handleUpgrade = async () => {
-    setUpgradeLoading(true);
     try {
-      const result = await client.queries.stripeCreateCheckout();
-      const url = result.data?.url;
-      if (url) {
-        await WebBrowser.openBrowserAsync(url);
-        setProModalVisible(false);
-      }
+      await purchaseCurrentPackage();
+      setProModalVisible(false);
+      enqueueSnackbar('Subscription activated', { variant: 'success' });
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Upgrade failed');
-    } finally {
-      setUpgradeLoading(false);
+      const userCancelled = typeof err === 'object' && err !== null && 'userCancelled' in err && (err as { userCancelled?: boolean }).userCancelled;
+      if (userCancelled) return;
+      enqueueSnackbar('Upgrade failed', { variant: 'error', description: err instanceof Error ? err.message : 'Upgrade failed' });
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restorePurchases();
+      enqueueSnackbar('Purchases restored', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Restore failed', { variant: 'error', description: err instanceof Error ? err.message : 'Restore failed' });
     }
   };
 
@@ -114,7 +137,7 @@ export function InvoicesScreen({ navigation }: Props) {
       </View>
 
       {/* Invoice count for free users */}
-      {profile && !isPro(profile) && (
+      {profile && !(isPro(profile) || isSubscriptionActive) && (
         <View style={styles.limitBanner}>
           <Text style={styles.limitText}>
             {invoices.filter((i) => {
@@ -164,10 +187,15 @@ export function InvoicesScreen({ navigation }: Props) {
 
       <ProModal
         visible={proModalVisible}
-        reason={`You've reached the free plan limit of ${FREE_INVOICE_LIMIT} invoices this month.`}
-        loading={upgradeLoading}
+        reason={subscriptionError ?? `You've reached the free plan limit of ${FREE_INVOICE_LIMIT} invoices this month.`}
+        loading={purchaseLoading}
         onUpgrade={handleUpgrade}
         onClose={() => setProModalVisible(false)}
+        closeLabel="Maybe later"
+        upgradeLabel={currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+        secondaryActionLabel="Restore purchases"
+        secondaryActionLoading={restoreLoading}
+        onSecondaryAction={handleRestorePurchases}
       />
     </SafeAreaView>
   );

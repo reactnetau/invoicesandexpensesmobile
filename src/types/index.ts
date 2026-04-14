@@ -5,6 +5,9 @@ export interface UserProfile {
   id: string;
   email: string;
   stripeCustomerId?: string | null;
+  revenueCatAppUserId?: string | null;
+  subscriptionProvider?: string | null;
+  subscriptionProductId?: string | null;
   subscriptionStatus: string;
   subscriptionEndDate?: string | null;
   isFoundingMember: boolean;

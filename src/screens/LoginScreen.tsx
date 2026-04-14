@@ -9,12 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 type Props = AuthScreenProps<'Login'>;
 
@@ -34,11 +34,12 @@ export function LoginScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
+      enqueueSnackbar('Signed in', { variant: 'success' });
       // RootNavigator re-renders when auth state changes
     } catch (err) {
       console.warn('[LoginScreen] sign in failed');
       const msg = parseAuthError(err);
-      setError(msg);
+      enqueueSnackbar('Sign in failed', { variant: 'error', description: msg });
     } finally {
       setLoading(false);
     }

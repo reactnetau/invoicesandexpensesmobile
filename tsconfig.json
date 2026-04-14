@@ -6,11 +6,15 @@
     "lib": [
       "ES2020"
     ],
+    "types": [
+      "node"
+    ],
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
   "include": [
+    "app.config.ts",
     "App.tsx",
     "src/**/*.ts",
     "src/**/*.tsx",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,18 +10,20 @@ import type { Schema } from '../types/amplify-schema';
 import type { TabScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
+import { useSubscription } from '../providers/SubscriptionProvider';
 import { StatCard } from '../components/StatCard';
 import { InvoiceCard } from '../components/InvoiceCard';
 import { ExpenseCard } from '../components/ExpenseCard';
 import { ProModal } from '../components/ProModal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { formatCurrency } from '../utils/currency';
 import { getAvailableFinancialYears, getCurrentFyStartYear } from '../utils/financialYear';
 import { isPro, type Invoice, type Expense } from '../types';
+import { enqueueSnackbar } from '../lib/snackbar';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import * as WebBrowser from 'expo-web-browser';
 
 const client = generateClient<Schema>();
 
@@ -30,6 +32,15 @@ type Props = TabScreenProps<'Dashboard'>;
 export function DashboardScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
   const { logout } = useAuth();
+  const {
+    currentPackage,
+    error: subscriptionError,
+    isSubscriptionActive,
+    purchaseCurrentPackage,
+    purchaseLoading,
+    restoreLoading,
+    restorePurchases,
+  } = useSubscription();
   const [selectedFyStart, setSelectedFyStart] = useState(getCurrentFyStartYear());
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -38,9 +49,25 @@ export function DashboardScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [proModalVisible, setProModalVisible] = useState(false);
   const [proModalReason, setProModalReason] = useState('');
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [dialog, setDialog] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string | null;
+    destructive?: boolean;
+    onConfirm?: () => void;
+  }>({ visible: false, title: '', message: '' });
+
+  const showDialog = useCallback((config: Omit<typeof dialog, 'visible'>) => {
+    setDialog({ visible: true, ...config });
+  }, []);
+
+  const closeDialog = useCallback(() => {
+    setDialog((current) => ({ ...current, visible: false }));
+  }, []);
 
   const fyYears = getAvailableFinancialYears(4);
   const selectedFy = fyYears.find((fy) => fy.startYear === selectedFyStart) ?? fyYears[0];
@@ -74,7 +101,7 @@ export function DashboardScreen({ navigation }: Props) {
   const unpaidCount = fyInvoices.filter((i) => i.status !== 'paid').length;
   const profit = income - expenseTotal;
   const currency = profile?.currency ?? 'USD';
-  const userIsPro = profile ? isPro(profile) : false;
+  const userIsPro = (profile ? isPro(profile) : false) || isSubscriptionActive;
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -89,10 +116,10 @@ export function DashboardScreen({ navigation }: Props) {
       if (result.data?.summary) {
         setAiSummary(result.data.summary);
       } else if (result.data?.error) {
-        Alert.alert('AI summary unavailable', result.data.error);
+        enqueueSnackbar('AI summary unavailable', { variant: 'error', description: result.data.error });
       }
     } catch (err) {
-      Alert.alert('Error', 'Failed to get AI summary');
+      enqueueSnackbar('Failed to get AI summary', { variant: 'error' });
     } finally {
       setAiLoading(false);
     }
@@ -100,7 +127,7 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleCsvExport = async () => {
     if (!userIsPro) {
-      setProModalReason('CSV export is available on the Pro plan.');
+      setProModalReason(subscriptionError ?? 'CSV export is available on the Pro plan.');
       setProModalVisible(true);
       return;
     }
@@ -108,7 +135,7 @@ export function DashboardScreen({ navigation }: Props) {
     try {
       const result = await client.queries.exportCsv({ fyStart: selectedFyStart });
       if (result.data?.error === 'pro_required') {
-        setProModalReason('CSV export is available on the Pro plan.');
+        setProModalReason(subscriptionError ?? 'CSV export is available on the Pro plan.');
         setProModalVisible(true);
         return;
       }
@@ -117,50 +144,56 @@ export function DashboardScreen({ navigation }: Props) {
       const path = `${FileSystem.cacheDirectory}export-${selectedFyStart}-${selectedFyStart + 1}.csv`;
       await FileSystem.writeAsStringAsync(path, content, { encoding: FileSystem.EncodingType.UTF8 });
       await Sharing.shareAsync(path, { mimeType: 'text/csv', UTI: 'public.comma-separated-values-text' });
+      enqueueSnackbar('CSV exported', { variant: 'success' });
     } catch (err) {
-      Alert.alert('Export failed', err instanceof Error ? err.message : 'Unknown error');
+      enqueueSnackbar('Export failed', { variant: 'error', description: err instanceof Error ? err.message : 'Unknown error' });
     } finally {
       setCsvLoading(false);
     }
   };
 
   const handleUpgrade = async () => {
-    setUpgradeLoading(true);
     try {
-      const result = await client.queries.stripeCreateCheckout();
-      const url = result.data?.url;
-      if (url) {
-        await WebBrowser.openBrowserAsync(url);
-        setProModalVisible(false);
-        await loadData();
-      } else {
-        Alert.alert('Error', result.data?.error ?? 'Failed to create checkout session');
-      }
+      await purchaseCurrentPackage();
+      setProModalVisible(false);
+      await loadData();
+      enqueueSnackbar('Subscription activated', { variant: 'success' });
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Upgrade failed');
-    } finally {
-      setUpgradeLoading(false);
+      const userCancelled = typeof err === 'object' && err !== null && 'userCancelled' in err && (err as { userCancelled?: boolean }).userCancelled;
+      if (userCancelled) return;
+      enqueueSnackbar('Upgrade failed', { variant: 'error', description: err instanceof Error ? err.message : 'Upgrade failed' });
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restorePurchases();
+      await loadData();
+      enqueueSnackbar('Purchases restored', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Restore failed', { variant: 'error', description: err instanceof Error ? err.message : 'Restore failed' });
     }
   };
 
   const handleLogout = () => {
-    Alert.alert('Sign out?', 'You can sign back in any time.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          setLogoutLoading(true);
-          try {
-            await logout();
-          } catch (err) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'Sign out failed');
-          } finally {
-            setLogoutLoading(false);
-          }
-        },
+    showDialog({
+      title: 'Sign out?',
+      message: 'You can sign back in any time.',
+      confirmLabel: 'Sign out',
+      cancelLabel: 'Cancel',
+      destructive: true,
+      onConfirm: async () => {
+        closeDialog();
+        setLogoutLoading(true);
+        try {
+          await logout();
+        } catch (err) {
+          enqueueSnackbar('Sign out failed', { variant: 'error', description: err instanceof Error ? err.message : 'Sign out failed' });
+        } finally {
+          setLogoutLoading(false);
+        }
       },
-    ]);
+    });
   };
 
   if (profileLoading && !profile) return <LoadingSpinner fullScreen />;
@@ -214,11 +247,31 @@ export function DashboardScreen({ navigation }: Props) {
             <Text style={[styles.planBadgeText, { color: userIsPro ? colors.warning : colors.textSecondary }]}>
               {profile.isFoundingMember ? 'Founding member — Pro forever' : userIsPro ? 'Pro plan' : 'Free plan'}
             </Text>
-            {!userIsPro && (
-              <TouchableOpacity onPress={() => { setProModalReason(''); setProModalVisible(true); }}>
-                <Text style={styles.upgradeLink}>Upgrade</Text>
-              </TouchableOpacity>
-            )}
+          </View>
+        )}
+
+        {profile && !userIsPro && (
+          <View style={styles.upgradeCard}>
+            <View style={styles.upgradeCardHeader}>
+              <Ionicons name="rocket-outline" size={18} color={colors.primary} />
+              <Text style={styles.upgradeCardTitle}>Upgrade to Pro</Text>
+            </View>
+            <Text style={styles.upgradeCardText}>
+              Unlock unlimited invoices and CSV export with the same RevenueCat subscription flow on iOS and Android.
+            </Text>
+            <TouchableOpacity
+              style={[globalStyles.primaryButton, styles.upgradeCardButton, purchaseLoading && styles.disabled]}
+              onPress={handleUpgrade}
+              disabled={purchaseLoading}
+            >
+              {purchaseLoading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={globalStyles.primaryButtonText}>
+                  {currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+                </Text>
+              )}
+            </TouchableOpacity>
           </View>
         )}
 
@@ -327,9 +380,25 @@ export function DashboardScreen({ navigation }: Props) {
       <ProModal
         visible={proModalVisible}
         reason={proModalReason}
-        loading={upgradeLoading}
+        loading={purchaseLoading}
         onUpgrade={handleUpgrade}
         onClose={() => setProModalVisible(false)}
+        closeLabel="Maybe later"
+        upgradeLabel={currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+        secondaryActionLabel="Restore purchases"
+        secondaryActionLoading={restoreLoading}
+        onSecondaryAction={handleRestorePurchases}
+      />
+
+      <ConfirmModal
+        visible={dialog.visible}
+        title={dialog.title}
+        message={dialog.message}
+        confirmLabel={dialog.confirmLabel}
+        cancelLabel={dialog.cancelLabel}
+        destructive={dialog.destructive}
+        onConfirm={dialog.onConfirm ?? closeDialog}
+        onCancel={closeDialog}
       />
     </SafeAreaView>
   );
@@ -350,7 +419,18 @@ const styles = StyleSheet.create({
   proBadge: { backgroundColor: colors.warningLight, borderColor: colors.warningBorder },
   freeBadge: { backgroundColor: colors.surfaceSecondary, borderColor: colors.border },
   planBadgeText: { fontSize: fontSize.xs, fontWeight: '600' },
-  upgradeLink: { fontSize: fontSize.xs, fontWeight: '700', color: colors.primary, marginLeft: 4 },
+  upgradeCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  upgradeCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.xs },
+  upgradeCardTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.text },
+  upgradeCardText: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 20, marginBottom: spacing.md },
+  upgradeCardButton: { width: '100%' },
   fySelector: { marginBottom: spacing.md, flexGrow: 0 },
   fyChip: {
     paddingHorizontal: spacing.md, paddingVertical: 6, borderRadius: radius.full,

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Switch, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,9 +10,10 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
-import { ensureCurrentUserProfile } from '../services/profile';
 import { ClientCard } from '../components/ClientCard';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 import { type Client } from '../types';
 
 const client = generateClient<Schema>();
@@ -28,7 +29,7 @@ interface IncludeFields {
 }
 
 export function CreateInvoiceScreen({ navigation }: Props) {
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading, fetchProfile } = useProfile();
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientPickerOpen, setClientPickerOpen] = useState(false);
@@ -53,6 +54,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
 
   const loadClients = useCallback(async () => {
     const result = await client.models.Client.list();
@@ -62,9 +64,16 @@ export function CreateInvoiceScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
+      fetchProfile();
       loadClients();
-    }, [loadClients])
+    }, [fetchProfile, loadClients])
   );
+
+  useEffect(() => {
+    if (!profileLoading && !profile) {
+      setProfileModalVisible(true);
+    }
+  }, [profile, profileLoading]);
 
   const selectClient = (c: Client) => {
     setSelectedClient(c);
@@ -84,6 +93,10 @@ export function CreateInvoiceScreen({ navigation }: Props) {
   };
 
   const handleCreate = async () => {
+    if (!profile) {
+      setProfileModalVisible(true);
+      return;
+    }
     if (!clientName.trim()) return setError('Client name is required.');
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return setError('Enter a valid amount.');
@@ -109,40 +122,39 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         includePayid: includes.payid,
       });
 
-      let result = await issueInvoice();
-      if (result.data?.errorCode === 'no_profile') {
-        await ensureCurrentUserProfile('AUD');
-        result = await issueInvoice();
-      }
+      const result = await issueInvoice();
 
       const data = result.data;
       if (data?.errorCode === 'limit_reached') {
-        Alert.alert('Invoice limit reached', data.error ?? 'Upgrade to Pro for unlimited invoices.');
+        enqueueSnackbar('Invoice limit reached', { variant: 'error', description: data.error ?? 'Upgrade to Pro for unlimited invoices.' });
         return;
       }
       if (data?.error) {
-        setError(data.error);
+        enqueueSnackbar('Failed to create invoice', { variant: 'error', description: data.error });
         return;
       }
 
       if (data?.emailSent === false && data?.emailError) {
-        Alert.alert(
-          'Invoice created',
-          `Invoice was created but the email could not be sent: ${data.emailError}`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        enqueueSnackbar('Invoice created', {
+          variant: 'info',
+          description: `The invoice was created but the email could not be sent: ${data.emailError}`,
+          duration: 4500,
+        });
+        navigation.goBack();
         return;
       }
 
+      enqueueSnackbar('Invoice created', { variant: 'success' });
       navigation.goBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create invoice');
+      enqueueSnackbar('Failed to create invoice', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to create invoice' });
     } finally {
       setLoading(false);
     }
   };
 
   const hasProfile = !!(profile?.businessName || profile?.fullName);
+  const canSubmit = !loading && !profileLoading;
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
@@ -290,11 +302,11 @@ export function CreateInvoiceScreen({ navigation }: Props) {
           )}
 
           <TouchableOpacity
-            style={[globalStyles.primaryButton, loading && styles.disabled]}
+            style={[globalStyles.primaryButton, !canSubmit && styles.disabled]}
             onPress={handleCreate}
-            disabled={loading}
+            disabled={!canSubmit}
           >
-            {loading ? (
+            {loading || profileLoading ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={globalStyles.primaryButtonText}>
@@ -304,6 +316,19 @@ export function CreateInvoiceScreen({ navigation }: Props) {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={profileModalVisible}
+        title="Profile setup required"
+        message="You need to fill in your profile before creating an invoice."
+        confirmLabel="Open settings"
+        cancelLabel="Close"
+        onConfirm={() => {
+          setProfileModalVisible(false);
+          navigation.navigate('Settings');
+        }}
+        onCancel={() => setProfileModalVisible(false)}
+      />
     </SafeAreaView>
   );
 }

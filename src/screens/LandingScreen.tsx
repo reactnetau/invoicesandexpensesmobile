@@ -5,11 +5,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { AuthScreenProps } from '../navigation/types';
 import { colors, fontSize, spacing, radius, shadow } from '../theme';
+
+const schmappsLogo = require('../assets/schmappslogo.png');
 
 type Props = AuthScreenProps<'Landing'>;
 
@@ -52,9 +55,7 @@ export function LandingScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} bounces={false}>
         <View style={styles.nav}>
           <View style={styles.brand}>
-            <View style={styles.brandMark}>
-              <Ionicons name="receipt" size={18} color={colors.white} />
-            </View>
+            <Image source={schmappsLogo} style={styles.brandMark} resizeMode="cover" />
             <Text style={styles.brandText}>Invoices & Expenses</Text>
           </View>
           <TouchableOpacity style={styles.navLogin} onPress={() => navigation.navigate('Login')}>
@@ -63,6 +64,7 @@ export function LandingScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.hero}>
+          <Image source={schmappsLogo} style={styles.heroLogo} resizeMode="cover" />
           <View style={styles.kicker}>
             <Ionicons name="flash-outline" size={13} color={colors.primaryDark} />
             <Text style={styles.kickerText}>Freelance finance</Text>
@@ -212,9 +214,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 8,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   brandText: { fontSize: fontSize.base, fontWeight: '700', color: colors.text },
   navLogin: {
@@ -227,6 +226,12 @@ const styles = StyleSheet.create({
   },
   navLoginText: { color: colors.textSecondary, fontSize: fontSize.sm, fontWeight: '600' },
   hero: { alignItems: 'center', paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  heroLogo: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    marginBottom: spacing.md,
+  },
   kicker: {
     flexDirection: 'row',
     alignItems: 'center',

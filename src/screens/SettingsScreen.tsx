@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert, Modal, FlatList, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Modal, FlatList, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { ensureUserProfile } from '../services/profile';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CURRENCIES } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'Settings'>;
@@ -26,7 +27,6 @@ export function SettingsScreen({ navigation }: Props) {
   const [payidLoading, setPayidLoading] = useState(false);
   const [payidDecrypted, setPayidDecrypted] = useState<string | null>(null);
   const [payidVisible, setPayidVisible] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     currency: 'AUD',
@@ -62,7 +62,6 @@ export function SettingsScreen({ navigation }: Props) {
   const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
-    setError(null);
     try {
       await client.models.UserProfile.update({
         id: profile.id,
@@ -74,9 +73,9 @@ export function SettingsScreen({ navigation }: Props) {
         abn: form.abn.trim() || undefined,
       } as any);
       await fetchProfile();
-      Alert.alert('Saved', 'Settings updated successfully.');
+      enqueueSnackbar('Settings updated', { variant: 'success' });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed');
+      enqueueSnackbar('Save failed', { variant: 'error', description: err instanceof Error ? err.message : 'Save failed' });
     } finally {
       setSaving(false);
     }
@@ -89,7 +88,7 @@ export function SettingsScreen({ navigation }: Props) {
       setPayidDecrypted(result.data?.payid ?? null);
       setPayidVisible(true);
     } catch (err) {
-      Alert.alert('Error', 'Failed to retrieve PayID');
+      enqueueSnackbar('Failed to retrieve PayID', { variant: 'error' });
     } finally {
       setPayidLoading(false);
     }
@@ -126,12 +125,12 @@ export function SettingsScreen({ navigation }: Props) {
       if (result.ok) {
         setPayidDecrypted(newPayid);
         setForm((prev) => ({ ...prev, newPayid: '' }));
-        Alert.alert('Saved', 'PayID updated successfully.');
+        enqueueSnackbar('PayID updated', { variant: 'success' });
       } else {
-        Alert.alert('Error', result.error ?? 'Failed to save PayID');
+        enqueueSnackbar('Failed to save PayID', { variant: 'error', description: result.error ?? 'Failed to save PayID' });
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save PayID');
+      enqueueSnackbar('Failed to save PayID', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to save PayID' });
     } finally {
       setPayidSaving(false);
     }
@@ -154,12 +153,6 @@ export function SettingsScreen({ navigation }: Props) {
 
           <View style={globalStyles.divider} />
           <Text style={styles.sectionTitle}>Preferences</Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Currency</Text>
@@ -283,6 +276,7 @@ export function SettingsScreen({ navigation }: Props) {
           </View>
         </View>
       </Modal>
+
     </SafeAreaView>
   );
 }
@@ -297,11 +291,6 @@ const styles = StyleSheet.create({
   },
   readonlyLabel: { fontSize: fontSize.sm, color: colors.textSecondary },
   readonlyValue: { fontSize: fontSize.sm, color: colors.text, fontWeight: '500' },
-  errorBox: {
-    backgroundColor: colors.errorLight, borderWidth: 1, borderColor: colors.errorBorder,
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   pickerBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   disabled: { opacity: 0.6 },
   payidReveal: {

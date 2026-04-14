@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,12 +11,13 @@ import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
+import { useSubscription } from '../providers/SubscriptionProvider';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, radius, globalStyles, statusBadgeStyle } from '../theme';
 import { formatDate } from '../utils/currency';
 import { isPro } from '../types';
-import * as WebBrowser from 'expo-web-browser';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'Account'>;
@@ -24,65 +25,62 @@ type Props = AppScreenProps<'Account'>;
 export function AccountScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, deleteAccount, fetchProfile } = useProfile();
   const { logout } = useAuth();
-  const [upgradeLoading, setUpgradeLoading] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
-  const [cancelLoading, setCancelLoading] = useState(false);
-  const [cancelModal, setCancelModal] = useState(false);
+  const {
+    currentPackage,
+    error: subscriptionError,
+    loading: subscriptionLoading,
+    managementUrl,
+    openManagementUrl,
+    purchaseCurrentPackage,
+    purchaseLoading,
+    restoreLoading,
+    restorePurchases,
+    isSubscriptionActive,
+  } = useSubscription();
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   const handleUpgrade = async () => {
-    setUpgradeLoading(true);
     try {
-      const result = await client.queries.stripeCreateCheckout();
-      const url = result.data?.url;
-      if (url) {
-        await WebBrowser.openBrowserAsync(url);
-        await fetchProfile();
-      } else {
-        Alert.alert('Error', result.data?.error ?? 'Failed to create checkout');
-      }
+      await purchaseCurrentPackage();
+      await fetchProfile();
+      enqueueSnackbar('Subscription activated', { variant: 'success' });
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Upgrade failed');
-    } finally {
-      setUpgradeLoading(false);
+      const userCancelled = typeof err === 'object' && err !== null && 'userCancelled' in err && (err as { userCancelled?: boolean }).userCancelled;
+      if (userCancelled) return;
+      enqueueSnackbar('Upgrade failed', { variant: 'error', description: err instanceof Error ? err.message : 'Upgrade failed' });
     }
   };
 
-  const handlePortal = async () => {
-    setPortalLoading(true);
+  const handleRestorePurchases = async () => {
     try {
-      const result = await client.queries.stripeCreatePortal();
-      const url = result.data?.url;
-      if (url) {
-        await WebBrowser.openBrowserAsync(url);
-        await fetchProfile();
+      const customerInfo = await restorePurchases();
+      await fetchProfile();
+      const hasActiveEntitlement = Object.keys(customerInfo?.entitlements.active ?? {}).length > 0;
+      if (hasActiveEntitlement) {
+        enqueueSnackbar('Purchases restored', { variant: 'success' });
       } else {
-        Alert.alert('Error', result.data?.error ?? 'Could not open billing portal');
+        enqueueSnackbar('No purchases to restore', { variant: 'info' });
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setPortalLoading(false);
+      enqueueSnackbar('Restore failed', { variant: 'error', description: err instanceof Error ? err.message : 'Restore failed' });
     }
   };
 
-  const handleCancel = async () => {
-    setCancelLoading(true);
+  const handleManageSubscription = async () => {
     try {
-      const result = await client.mutations.stripeCancelSubscription();
-      if (result.data?.ok) {
-        Alert.alert('Subscription cancelled', 'Your Pro access will remain active until the end of the current billing period.');
-        await fetchProfile();
-      } else {
-        Alert.alert('Error', result.data?.error ?? 'Cancellation failed');
+      const opened = await openManagementUrl();
+      if (!opened) {
+        enqueueSnackbar('Management unavailable', {
+          variant: 'info',
+          description: 'No management URL is available until an in-app subscription has been purchased.',
+        });
+        return;
       }
+      await fetchProfile();
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Cancellation failed');
-    } finally {
-      setCancelLoading(false);
-      setCancelModal(false);
+      enqueueSnackbar('Management unavailable', { variant: 'error', description: err instanceof Error ? err.message : 'Unable to open subscription management' });
     }
   };
 
@@ -107,7 +105,7 @@ export function AccountScreen({ navigation }: Props) {
       // Logout cleans up local session
       await logout();
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Account deletion failed');
+      enqueueSnackbar('Account deletion failed', { variant: 'error', description: err instanceof Error ? err.message : 'Account deletion failed' });
       setDeleteLoading(false);
       setDeleteModal(false);
     }
@@ -122,10 +120,13 @@ export function AccountScreen({ navigation }: Props) {
     }
   };
 
-  if (profileLoading && !profile) return <LoadingSpinner fullScreen />;
+  if ((profileLoading && !profile) || (subscriptionLoading && !profile)) return <LoadingSpinner fullScreen />;
 
-  const userIsPro = profile ? isPro(profile) : false;
-  const badge = statusBadgeStyle(profile?.subscriptionStatus ?? 'inactive');
+  const userIsPro = (profile ? isPro(profile) : false) || isSubscriptionActive;
+  const badge = statusBadgeStyle(profile?.subscriptionStatus ?? (userIsPro ? 'active' : 'inactive'));
+  const upgradeLabel = currentPackage
+    ? `Subscribe ${currentPackage.product.priceString}`
+    : 'Subscribe to Pro';
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
@@ -162,20 +163,35 @@ export function AccountScreen({ navigation }: Props) {
             </Text>
           )}
 
+          {subscriptionError && (
+            <Text style={styles.freeInfo}>{subscriptionError}</Text>
+          )}
+
           {!userIsPro && !profile?.isFoundingMember && (
             <>
               <Text style={styles.freeInfo}>
-                Free plan: 5 invoices/month. Upgrade for unlimited invoices and CSV export.
+                Free plan: 5 invoices/month. Upgrade with RevenueCat to unlock unlimited invoices and CSV export on iOS and Android.
               </Text>
               <TouchableOpacity
-                style={[globalStyles.primaryButton, { marginTop: spacing.md }, upgradeLoading && { opacity: 0.6 }]}
+                style={[globalStyles.primaryButton, { marginTop: spacing.md }, purchaseLoading && { opacity: 0.6 }]}
                 onPress={handleUpgrade}
-                disabled={upgradeLoading}
+                disabled={purchaseLoading}
               >
-                {upgradeLoading ? (
+                {purchaseLoading ? (
                   <ActivityIndicator size="small" color={colors.white} />
                 ) : (
-                  <Text style={globalStyles.primaryButtonText}>Upgrade to Pro — $7/month</Text>
+                  <Text style={globalStyles.primaryButtonText}>{upgradeLabel}</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[globalStyles.secondaryButton, { marginTop: spacing.sm }, restoreLoading && { opacity: 0.6 }]}
+                onPress={handleRestorePurchases}
+                disabled={restoreLoading}
+              >
+                {restoreLoading ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
                 )}
               </TouchableOpacity>
             </>
@@ -184,22 +200,21 @@ export function AccountScreen({ navigation }: Props) {
           {userIsPro && !profile?.isFoundingMember && (
             <View style={styles.proActions}>
               <TouchableOpacity
-                style={[globalStyles.secondaryButton, { flex: 1 }, portalLoading && { opacity: 0.6 }]}
-                onPress={handlePortal}
-                disabled={portalLoading}
+                style={[globalStyles.secondaryButton, restoreLoading && { opacity: 0.6 }]}
+                onPress={handleRestorePurchases}
+                disabled={restoreLoading}
               >
-                {portalLoading ? (
+                {restoreLoading ? (
                   <ActivityIndicator size="small" color={colors.text} />
                 ) : (
-                  <Text style={globalStyles.secondaryButtonText}>Manage billing</Text>
+                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={[globalStyles.dangerButton, { flex: 1 }, cancelLoading && { opacity: 0.6 }]}
-                onPress={() => setCancelModal(true)}
-                disabled={cancelLoading}
+                style={[globalStyles.primaryButton, !managementUrl && { opacity: 0.6 }]}
+                onPress={handleManageSubscription}
               >
-                <Text style={globalStyles.dangerButtonText}>Cancel plan</Text>
+                <Text style={globalStyles.primaryButtonText}>Manage subscription</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -241,18 +256,6 @@ export function AccountScreen({ navigation }: Props) {
           </Text>
         </View>
       </ScrollView>
-
-      <ConfirmModal
-        visible={cancelModal}
-        title="Cancel subscription?"
-        message="Your Pro access will continue until the end of the current billing period. You can re-subscribe at any time."
-        confirmLabel="Cancel plan"
-        destructive
-        loading={cancelLoading}
-        onConfirm={handleCancel}
-        onCancel={() => setCancelModal(false)}
-      />
-
       <ConfirmModal
         visible={deleteModal}
         title="Delete account?"
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: fontSize.base, fontWeight: '600', color: colors.text },
   subDetail: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
   freeInfo: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
-  proActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
+  proActions: { gap: spacing.sm, marginTop: spacing.md },
   foundingBadge: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,
     backgroundColor: colors.warningLight, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md,

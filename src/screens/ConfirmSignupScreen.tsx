@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 
@@ -29,9 +30,10 @@ export function ConfirmSignupScreen({ route, navigation }: Props) {
       // After email confirmation, create the UserProfile record
       // (We need to sign in first to have an authenticated session)
       // The user will be prompted to sign in again since we don't have their password here
+      enqueueSnackbar('Email verified', { variant: 'success', description: 'You can now sign in to your account.' });
       navigation.navigate('Login');
     } catch (err) {
-      setError(parseAuthError(err));
+      enqueueSnackbar('Verification failed', { variant: 'error', description: parseAuthError(err) });
     } finally {
       setLoading(false);
     }

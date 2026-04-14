@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 type Props = AuthScreenProps<'ConfirmReset'>;
 
@@ -25,9 +26,10 @@ export function ConfirmResetScreen({ route, navigation }: Props) {
     setLoading(true);
     try {
       await confirmForgotPassword(email, code.trim(), password);
+      enqueueSnackbar('Password reset', { variant: 'success' });
       navigation.navigate('Login');
     } catch (err) {
-      setError(parseAuthError(err));
+      enqueueSnackbar('Password reset failed', { variant: 'error', description: parseAuthError(err) });
     } finally {
       setLoading(false);
     }

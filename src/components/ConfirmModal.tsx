@@ -14,7 +14,7 @@ interface Props {
   title: string;
   message: string;
   confirmLabel?: string;
-  cancelLabel?: string;
+  cancelLabel?: string | null;
   destructive?: boolean;
   loading?: boolean;
   onConfirm: () => void;
@@ -32,6 +32,8 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
+  const showCancel = !!cancelLabel;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
@@ -39,11 +41,13 @@ export function ConfirmModal({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
           <View style={styles.actions}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} disabled={loading}>
-              <Text style={styles.cancelText}>{cancelLabel}</Text>
-            </TouchableOpacity>
+            {showCancel && (
+              <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} disabled={loading}>
+                <Text style={styles.cancelText}>{cancelLabel}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={[styles.confirmBtn, destructive && styles.destructiveBtn]}
+              style={[styles.confirmBtn, !showCancel && styles.confirmBtnSolo, destructive && styles.destructiveBtn]}
               onPress={onConfirm}
               disabled={loading}
             >
@@ -110,6 +114,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
+  },
+  confirmBtnSolo: {
+    width: '100%',
   },
   destructiveBtn: {
     backgroundColor: colors.error,

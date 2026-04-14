@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 type Props = AuthScreenProps<'ForgotPassword'>;
 
@@ -23,9 +24,10 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await forgotPassword(email.trim().toLowerCase());
+      enqueueSnackbar('Reset code sent', { variant: 'success', description: `We sent a verification code to ${email.trim().toLowerCase()}.` });
       setSent(true);
     } catch (err) {
-      setError(parseAuthError(err));
+      enqueueSnackbar('Failed to send reset code', { variant: 'error', description: parseAuthError(err) });
     } finally {
       setLoading(false);
     }

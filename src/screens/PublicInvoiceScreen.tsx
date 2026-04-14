@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
+  View, Text, StyleSheet, ScrollView, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateClient } from 'aws-amplify/data';
@@ -11,6 +11,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, radius, shadow, statusBadgeStyle } from '../theme';
 import { formatCurrency, formatDate } from '../utils/currency';
 import { Ionicons } from '@expo/vector-icons';
+
+const schmappsLogo = require('../assets/schmappslogo.png');
 
 // Use API key auth for unauthenticated access
 const client = generateClient<Schema>({ authMode: 'apiKey' });
@@ -67,7 +69,7 @@ export function PublicInvoiceScreen({ route }: Props) {
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Header band */}
         <View style={styles.headerBand}>
-          <Ionicons name="receipt" size={28} color={colors.primary} />
+          <Image source={schmappsLogo} style={styles.headerLogo} resizeMode="cover" />
           <Text style={styles.headerTitle}>Invoice</Text>
           {invoice.businessName && (
             <Text style={styles.businessName}>{invoice.businessName}</Text>
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
+  headerLogo: { width: 44, height: 44, borderRadius: 14, marginBottom: 2 },
   headerTitle: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text },
   businessName: { fontSize: fontSize.base, color: colors.textSecondary },
   hero: { alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.md },

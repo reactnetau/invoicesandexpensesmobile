@@ -14,6 +14,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, globalStyles } from '../theme';
 import { type Client } from '../types';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = TabScreenProps<'Clients'>;
@@ -55,6 +56,9 @@ export function ClientsScreen({ navigation }: Props) {
     try {
       await client.models.Client.delete({ id: deleteTarget });
       setClients((prev) => prev.filter((c) => c.id !== deleteTarget));
+      enqueueSnackbar('Client deleted', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Failed to delete client', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to delete client' });
     } finally {
       setDeleteLoading(false);
       setDeleteTarget(null);

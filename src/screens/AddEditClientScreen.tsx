@@ -9,6 +9,7 @@ import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { type Client } from '../types';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'AddEditClient'>;
@@ -66,9 +67,10 @@ export function AddEditClientScreen({ route, navigation }: Props) {
           address: address.trim() || undefined,
         } as any);
       }
+      enqueueSnackbar(isEditing ? 'Client updated' : 'Client added', { variant: 'success' });
       navigation.goBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save client');
+      enqueueSnackbar('Failed to save client', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to save client' });
     } finally {
       setLoading(false);
     }

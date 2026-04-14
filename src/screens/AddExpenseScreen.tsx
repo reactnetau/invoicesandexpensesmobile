@@ -11,6 +11,7 @@ import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'AddExpense'>;
@@ -36,9 +37,10 @@ export function AddExpenseScreen({ navigation }: Props) {
         amount: parsedAmount,
         date: new Date(date).toISOString(),
       } as any);
+      enqueueSnackbar('Expense added', { variant: 'success' });
       navigation.goBack();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add expense');
+      enqueueSnackbar('Failed to add expense', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to add expense' });
     } finally {
       setLoading(false);
     }

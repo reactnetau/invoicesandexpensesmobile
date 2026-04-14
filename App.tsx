@@ -6,23 +6,16 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
-import { StripeProvider } from '@stripe/stripe-react-native';
-import Constants from 'expo-constants';
 import { RootNavigator } from './src/navigation';
-
-const STRIPE_KEY =
-  (Constants.expoConfig?.extra as any)?.stripePublishableKey ??
-  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ??
-  '';
+import { MobileSnackbarHost } from './src/lib/snackbar';
 
 export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <StripeProvider publishableKey={STRIPE_KEY}>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </StripeProvider>
+        <StatusBar style="dark" />
+        <RootNavigator />
+        <MobileSnackbarHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

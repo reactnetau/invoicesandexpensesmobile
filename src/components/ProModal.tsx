@@ -16,15 +16,32 @@ interface Props {
   onUpgrade: () => void;
   onClose: () => void;
   reason?: string;
+  showUpgradeAction?: boolean;
+  closeLabel?: string;
+  upgradeLabel?: string;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  secondaryActionLoading?: boolean;
 }
 
 const PRO_FEATURES = [
   'Unlimited invoices (free plan: 5/month)',
   'CSV export for any financial year',
-  'Priority support',
 ];
 
-export function ProModal({ visible, loading = false, onUpgrade, onClose, reason }: Props) {
+export function ProModal({
+  visible,
+  loading = false,
+  onUpgrade,
+  onClose,
+  reason,
+  showUpgradeAction = true,
+  closeLabel = 'Maybe later',
+  upgradeLabel = 'Upgrade now',
+  secondaryActionLabel,
+  onSecondaryAction,
+  secondaryActionLoading = false,
+}: Props) {
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -49,20 +66,36 @@ export function ProModal({ visible, loading = false, onUpgrade, onClose, reason 
             ))}
           </View>
 
-          <TouchableOpacity
-            style={styles.upgradeBtn}
-            onPress={onUpgrade}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.upgradeBtnText}>Upgrade now — $7/month</Text>
-            )}
-          </TouchableOpacity>
+          {showUpgradeAction && (
+            <TouchableOpacity
+              style={styles.upgradeBtn}
+              onPress={onUpgrade}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.upgradeBtnText}>{upgradeLabel}</Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {secondaryActionLabel && onSecondaryAction && (
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={onSecondaryAction}
+              disabled={secondaryActionLoading}
+            >
+              {secondaryActionLoading ? (
+                <ActivityIndicator size="small" color={colors.text} />
+              ) : (
+                <Text style={styles.secondaryBtnText}>{secondaryActionLabel}</Text>
+              )}
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-            <Text style={styles.cancelText}>Maybe later</Text>
+            <Text style={styles.cancelText}>{closeLabel}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -144,6 +177,20 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.base,
     fontWeight: '700',
+  },
+  secondaryBtn: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryBtnText: {
+    color: colors.text,
+    fontSize: fontSize.base,
+    fontWeight: '600',
   },
   cancelBtn: {
     padding: spacing.md,

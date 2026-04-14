@@ -9,6 +9,7 @@ import { RootStackParamList } from './types';
 import { AuthNavigator } from './AuthNavigator';
 import { AppNavigator } from './AppNavigator';
 import { PublicInvoiceScreen } from '../screens/PublicInvoiceScreen';
+import { SubscriptionProvider } from '../providers/SubscriptionProvider';
 import { colors } from '../theme';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -49,18 +50,29 @@ export function RootNavigator() {
   const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>(
     'loading'
   );
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    getCurrentUser()
-      .then(() => setAuthState('authenticated'))
-      .catch(() => setAuthState('unauthenticated'));
+    const refreshAuthState = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setCurrentUserId(currentUser.userId);
+        setAuthState('authenticated');
+      } catch {
+        setCurrentUserId(null);
+        setAuthState('unauthenticated');
+      }
+    };
+
+    void refreshAuthState();
 
     const unsubscribe = Hub.listen('auth', ({ payload }) => {
       switch (payload.event) {
         case 'signedIn':
-          setAuthState('authenticated');
+          void refreshAuthState();
           break;
         case 'signedOut':
+          setCurrentUserId(null);
           setAuthState('unauthenticated');
           break;
       }
@@ -81,7 +93,13 @@ export function RootNavigator() {
     <NavigationContainer linking={linking}>
       <Root.Navigator screenOptions={{ headerShown: false }}>
         {authState === 'authenticated' ? (
-          <Root.Screen name="App" component={AppNavigator} />
+          <Root.Screen name="App">
+            {() => (
+              <SubscriptionProvider appUserId={currentUserId!}>
+                <AppNavigator />
+              </SubscriptionProvider>
+            )}
+          </Root.Screen>
         ) : (
           <Root.Screen name="Auth" component={AuthNavigator} />
         )}

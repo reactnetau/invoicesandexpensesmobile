@@ -2,7 +2,9 @@
 
 A mobile invoicing and expense tracking app for freelancers and contractors.
 
-**Stack:** Expo (TypeScript) · AWS Amplify client · Stripe · React Navigation
+**Stack:** Expo (TypeScript) · AWS Amplify client · RevenueCat · React Navigation
+
+Mobile subscriptions now use RevenueCat. The sibling backend still contains Stripe infrastructure used by the web app and legacy subscription records.
 
 The Amplify Gen 2 backend now lives in the sibling project:
 
@@ -41,7 +43,7 @@ yarn sandbox
 
 This generates `amplify_outputs.json` in the mobile project root. **This file is gitignored** — every developer runs their own sandbox.
 
-### 3. Set secrets
+### 3. Set backend secrets
 
 Secrets are stored in AWS Systems Manager Parameter Store. Set them once per sandbox:
 
@@ -66,9 +68,16 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 Copy `.env.example` to `.env.local` and fill in:
 
 ```bash
-EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-EXPO_PUBLIC_APP_URL=https://invoicesandexpenses.com  # or your dev URL
+EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY=appl_...
+EXPO_PUBLIC_REVENUECAT_GOOGLE_API_KEY=goog_...
+EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID=pro
+EXPO_PUBLIC_APP_URL=https://invoicesandexpenses.com
 ```
+
+Notes:
+- Use RevenueCat public SDK keys from the same RevenueCat project as your entitlement and offering.
+- For Test Store development, use the RevenueCat `test_...` key for the target platform.
+- `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID` must be the entitlement identifier, not the display name shown in the dashboard.
 
 ### 5. Start the app
 
@@ -97,6 +106,80 @@ eas build --profile development --platform ios
 
 Avoid using `expo start --android` or `expo start --ios` for this app unless you explicitly want Expo Go.
 
+## Apple App Store / TestFlight release
+
+### Apple prerequisites
+
+- Run `eas login` and make sure this project is linked to the Expo project in `app.config.ts`.
+- Join or create an Apple Developer Program team.
+- Create the app in App Store Connect with bundle ID:
+
+```text
+com.schmapps.invoicesandexpenses
+```
+
+- Use `eas credentials --platform ios` and let EAS manage certificates/profiles unless you have a reason to bring your own.
+- In RevenueCat, configure the Apple app, entitlement, offering, and App Store subscription product.
+- Set `EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY` for production builds.
+- Prepare App Store metadata: privacy policy URL, support URL/email, screenshots, subscription copy, and App Privacy answers.
+- If Universal Links are required for public invoices, configure `invoicesandexpenses.com` for Associated Domains and host the Apple App Site Association file.
+
+### Build a development client for iOS
+
+```bash
+yarn build:ios:dev
+```
+
+The development profile builds for the iOS simulator.
+
+### Build for TestFlight / App Store
+
+```bash
+yarn build:ios:appstore
+```
+
+The production iOS profile increments the iOS build number automatically and excludes the dev-client plugin from the store build.
+
+### Submit to App Store Connect
+
+```bash
+yarn submit:ios:appstore
+```
+
+EAS will ask for your Apple account/team/app details if they are not already saved. After upload, finish TestFlight review and App Store release steps in App Store Connect.
+
+## Google Play release
+
+### Release prerequisites
+
+- Run `eas login` and `eas init` if this project has not been linked to Expo/EAS yet.
+- Set `EAS_PROJECT_ID` in your shell or CI so the dynamic Expo config can populate `extra.eas.projectId`.
+- Use `eas credentials` to let EAS manage the Android upload keystore.
+- Confirm the Android package name remains `com.schmapps.invoicesandexpenses`.
+- Prepare a privacy policy URL, Play Store listing copy, screenshots, feature graphic, support email, and data safety answers in Play Console.
+
+### Build the Play artifact
+
+```bash
+yarn build:android:play
+```
+
+This production profile builds an Android App Bundle (`.aab`) and excludes the dev-client plugin from the store build.
+
+### Submit to Play internal testing
+
+```bash
+yarn submit:android:play
+```
+
+The configured submit profile targets the Play `internal` track.
+
+### Subscription configuration
+
+- Development can use RevenueCat Test Store keys.
+- Production requires the correct Apple and Google public SDK keys from RevenueCat.
+- The backend `syncSubscriptionState` mutation keeps Amplify-gated features such as invoice limits and CSV export aligned with RevenueCat customer state.
+
 ---
 
 ## AWS SES setup (required for invoice email sending)
@@ -109,7 +192,9 @@ The app uses AWS SES instead of Gmail API. Before invoice emails work:
 
 ---
 
-## Stripe setup
+## Shared backend Stripe setup
+
+Stripe is still configured in the sibling backend for the web app and legacy subscription/webhook handling. The mobile app itself does not use Stripe SDK checkout anymore.
 
 ### Webhook
 
@@ -133,9 +218,9 @@ aws cloudformation describe-stacks --stack-name <StackName> --query "Stacks[0].O
    - `customer.subscription.deleted`
 4. Copy the webhook signing secret and set `STRIPE_WEBHOOK_SECRET`.
 
-### Deep links after checkout
+### Mobile subscription state
 
-Stripe redirects back to `EXPO_PUBLIC_APP_URL/stripe-success` and `/stripe-cancel`. On mobile these open in the in-app browser — the app calls `fetchProfile()` after the browser closes to pick up the updated subscription status.
+Mobile purchase, restore, and management flows are handled through RevenueCat in-app. After purchase or restore, the app syncs entitlement status back to Amplify via the `syncSubscriptionState` mutation so invoice limits and CSV export remain accurate.
 
 ---
 
@@ -195,7 +280,7 @@ npm run ts-check
 - Controlled by the `FOUNDING_MEMBERS` secret (set to `"true"` to enable).
 - The `createUserProfile` Lambda counts total UserProfile records on signup.
 - The first 50 users get `isFoundingMember: true` and `subscriptionStatus: "active"`.
-- The Stripe webhook Lambda skips founding members when processing subscription deletions or deactivations.
+- The subscription sync flow preserves founding members as active even when no RevenueCat entitlement is present.
 - Founding members see "Founding member — Pro forever" in the Account screen.
 
 ---
@@ -206,8 +291,8 @@ npm run ts-check
 - [ ] `yarn sandbox` running in `../invoicesandexpensesbackend` and `amplify_outputs.json` generated
 - [ ] All 7 secrets set via `npx ampx sandbox secret set`
 - [ ] SES sender email/domain verified
-- [ ] Stripe products/prices created; `STRIPE_PRICE_ID` set
-- [ ] Stripe webhook endpoint added with correct events
-- [ ] `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` set in `.env.local`
+- [ ] RevenueCat entitlement and offering created in the same project
+- [ ] RevenueCat Apple and Google public SDK keys set in `.env.local`
+- [ ] `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID` set to the exact entitlement identifier
 - [ ] `EXPO_PUBLIC_APP_URL` pointing to your domain (for invoice links in PDFs/emails)
 - [ ] App runs on iOS/Android simulator via `npm run ios` / `npm run android`

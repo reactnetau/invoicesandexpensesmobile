@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, Switch,
+  ActivityIndicator, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,6 +14,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, radius, globalStyles, statusBadgeStyle } from '../theme';
 import { formatCurrency, formatDate } from '../utils/currency';
 import { type Invoice } from '../types';
+import { enqueueSnackbar } from '../lib/snackbar';
 import * as WebBrowser from 'expo-web-browser';
 
 const client = generateClient<Schema>();
@@ -53,6 +54,7 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
     setDeleteLoading(true);
     try {
       await client.models.Invoice.delete({ id: invoice.id });
+      enqueueSnackbar('Invoice deleted', { variant: 'success' });
       navigation.goBack();
     } finally {
       setDeleteLoading(false);
@@ -63,7 +65,7 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
   const handleSendEmail = async () => {
     if (!invoice) return;
     if (!invoice.clientEmail) {
-      Alert.alert('No email', 'This invoice has no client email address.');
+      enqueueSnackbar('No client email', { variant: 'error', description: 'This invoice has no client email address.' });
       return;
     }
     setEmailLoading(true);
@@ -78,12 +80,12 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
         includePayid: includes.payid,
       });
       if (result.data?.ok) {
-        Alert.alert('Email sent', `Invoice PDF sent to ${invoice.clientEmail}`);
+        enqueueSnackbar('Email sent', { variant: 'success', description: `Invoice PDF sent to ${invoice.clientEmail}` });
       } else {
-        Alert.alert('Email failed', result.data?.error ?? 'Unknown error');
+        enqueueSnackbar('Email failed', { variant: 'error', description: result.data?.error ?? 'Unknown error' });
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to send email');
+      enqueueSnackbar('Failed to send email', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to send email' });
     } finally {
       setEmailLoading(false);
     }
@@ -97,9 +99,9 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
     try {
       const Clipboard = require('expo-clipboard');
       await Clipboard.setStringAsync(publicUrl);
-      Alert.alert('Copied', 'Public invoice link copied to clipboard');
+      enqueueSnackbar('Link copied', { variant: 'success', description: 'Public invoice link copied to clipboard' });
     } catch {
-      Alert.alert('Public link', publicUrl);
+      enqueueSnackbar('Public link', { variant: 'info', description: publicUrl, duration: 5000 });
     }
   };
 

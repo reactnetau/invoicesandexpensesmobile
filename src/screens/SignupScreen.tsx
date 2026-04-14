@@ -18,6 +18,7 @@ import type { AuthScreenProps } from '../navigation/types';
 import { useAuth, parseAuthError } from '../hooks/useAuth';
 import { CURRENCIES } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 type Props = AuthScreenProps<'Signup'>;
 
@@ -40,11 +41,12 @@ export function SignupScreen({ navigation }: Props) {
     try {
       const result = await register(email.trim().toLowerCase(), password, currency);
       if (result.needsConfirmation) {
+        enqueueSnackbar('Verification code sent', { variant: 'success', description: 'Check your email to verify your account.' });
         navigation.navigate('ConfirmSignup', { email: email.trim().toLowerCase() });
       }
       // If no confirmation needed, RootNavigator handles the transition
     } catch (err) {
-      setError(parseAuthError(err));
+      enqueueSnackbar('Sign up failed', { variant: 'error', description: parseAuthError(err) });
     } finally {
       setLoading(false);
     }
