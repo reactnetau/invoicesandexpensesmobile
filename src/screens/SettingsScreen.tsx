@@ -6,9 +6,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
+import { ensureUserProfile } from '../services/profile';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CURRENCIES } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
@@ -93,18 +95,40 @@ export function SettingsScreen({ navigation }: Props) {
     }
   };
 
+  const ensureProfileForCurrentUser = async () => {
+    const attributes = await fetchUserAttributes();
+    const email = attributes.email ?? profile?.email;
+    if (!email) {
+      throw new Error('Could not find your account email. Please sign out and sign back in.');
+    }
+
+    await ensureUserProfile(email, form.currency);
+    await fetchProfile();
+  };
+
+  const savePayid = async (payid: string) => {
+    const result = await client.mutations.updateEncryptedPayid({ payid });
+    return result.data ?? { ok: false, error: 'Failed to save PayID' };
+  };
+
   const handleSavePayid = async () => {
     const newPayid = form.newPayid.trim();
     if (!newPayid) return;
     setPayidSaving(true);
     try {
-      const result = await client.mutations.updateEncryptedPayid({ payid: newPayid });
-      if (result.data?.ok) {
+      let result = await savePayid(newPayid);
+
+      if (!result.ok && result.error === 'User profile not found') {
+        await ensureProfileForCurrentUser();
+        result = await savePayid(newPayid);
+      }
+
+      if (result.ok) {
         setPayidDecrypted(newPayid);
         setForm((prev) => ({ ...prev, newPayid: '' }));
         Alert.alert('Saved', 'PayID updated successfully.');
       } else {
-        Alert.alert('Error', result.data?.error ?? 'Failed to save PayID');
+        Alert.alert('Error', result.error ?? 'Failed to save PayID');
       }
     } catch (err) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save PayID');

@@ -40,6 +40,7 @@ export function DashboardScreen({ navigation }: Props) {
   const [proModalReason, setProModalReason] = useState('');
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const fyYears = getAvailableFinancialYears(4);
   const selectedFy = fyYears.find((fy) => fy.startYear === selectedFyStart) ?? fyYears[0];
@@ -142,6 +143,26 @@ export function DashboardScreen({ navigation }: Props) {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert('Sign out?', 'You can sign back in any time.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign out',
+        style: 'destructive',
+        onPress: async () => {
+          setLogoutLoading(true);
+          try {
+            await logout();
+          } catch (err) {
+            Alert.alert('Error', err instanceof Error ? err.message : 'Sign out failed');
+          } finally {
+            setLogoutLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
   if (profileLoading && !profile) return <LoadingSpinner fullScreen />;
 
   const recentInvoices = [...fyInvoices].sort((a, b) => (b.createdAt ?? '') > (a.createdAt ?? '') ? 1 : -1).slice(0, 3);
@@ -167,6 +188,17 @@ export function DashboardScreen({ navigation }: Props) {
               onPress={() => (navigation as any).navigate('Settings')}
             >
               <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.headerBtn, logoutLoading && styles.disabled]}
+              onPress={handleLogout}
+              disabled={logoutLoading}
+            >
+              {logoutLoading ? (
+                <ActivityIndicator size="small" color={colors.textSecondary} />
+              ) : (
+                <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
+              )}
             </TouchableOpacity>
           </View>
         </View>

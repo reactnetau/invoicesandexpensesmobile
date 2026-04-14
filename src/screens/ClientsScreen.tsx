@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
@@ -35,6 +36,12 @@ export function ClientsScreen({ navigation }: Props) {
   useEffect(() => {
     loadClients().finally(() => setLoading(false));
   }, [loadClients]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadClients();
+    }, [loadClients])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);

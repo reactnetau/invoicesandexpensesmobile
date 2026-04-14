@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { UserProfile } from '../types';
+import { ensureUserProfile } from '../services/profile';
 
 const client = generateClient<Schema>();
 
@@ -31,8 +32,7 @@ export function useProfile() {
   const createProfile = useCallback(
     async (email: string, currency = 'USD'): Promise<UserProfile | null> => {
       try {
-        const result = await client.mutations.initializeUserProfile({ email, currency });
-        if (result.data?.error) throw new Error(result.data.error);
+        await ensureUserProfile(email, currency);
         // Fetch the full profile after creation
         await fetchProfile();
         return profile;

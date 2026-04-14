@@ -89,7 +89,6 @@ export function PublicInvoiceScreen({ route }: Props) {
         <View style={styles.card}>
           {[
             { label: 'Client', value: invoice.clientName },
-            { label: 'Client email', value: invoice.clientEmail ?? 'No email on file' },
             { label: 'Due date', value: formatDate(invoice.dueDate) },
             { label: 'Status', value: invoice.status === 'paid' ? 'Paid' : 'Unpaid' },
             { label: 'Reference', value: reference },

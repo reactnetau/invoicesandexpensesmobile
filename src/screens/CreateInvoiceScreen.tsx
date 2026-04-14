@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Switch, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
@@ -52,9 +53,17 @@ export function CreateInvoiceScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    client.models.Client.list().then((r) => setClients((r.data ?? []) as unknown as Client[]));
+  const loadClients = useCallback(async () => {
+    const result = await client.models.Client.list();
+    const sorted = [...(result.data ?? [])].sort((a, b) => a.name.localeCompare(b.name));
+    setClients(sorted as unknown as Client[]);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadClients();
+    }, [loadClients])
+  );
 
   const selectClient = (c: Client) => {
     setSelectedClient(c);
@@ -161,7 +170,16 @@ export function CreateInvoiceScreen({ navigation }: Props) {
             {clientPickerOpen && !selectedClient && (
               <View style={styles.clientDropdown}>
                 {clients.length === 0 ? (
-                  <Text style={styles.noClientsText}>No clients yet. Add one from the Clients tab.</Text>
+                  <View style={styles.noClientsBox}>
+                    <Text style={styles.noClientsText}>No clients yet.</Text>
+                    <TouchableOpacity
+                      style={styles.addClientButton}
+                      onPress={() => navigation.navigate('AddEditClient', {})}
+                    >
+                      <Ionicons name="person-add-outline" size={16} color={colors.primary} />
+                      <Text style={styles.addClientButtonText}>Add a client</Text>
+                    </TouchableOpacity>
+                  </View>
                 ) : (
                   clients.map((c) => (
                     <ClientCard key={c.id} client={c} onPress={() => selectClient(c)} />
@@ -297,7 +315,20 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs, backgroundColor: colors.surface, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, padding: spacing.sm, maxHeight: 260,
   },
-  noClientsText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center', padding: spacing.md },
+  noClientsBox: { alignItems: 'center', padding: spacing.md, gap: spacing.sm },
+  noClientsText: { fontSize: fontSize.sm, color: colors.textMuted, textAlign: 'center' },
+  addClientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primaryLight,
+  },
+  addClientButtonText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.primary },
   switchRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md,
