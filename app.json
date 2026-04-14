@@ -1,0 +1,63 @@
+{
+  "expo": {
+    "name": "Invoices & Expenses",
+    "slug": "invoicesandexpenses",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#EFF6FF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.schmapps.invoicesandexpenses",
+      "associatedDomains": [
+        "applinks:invoicesandexpenses.com"
+      ]
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#EFF6FF"
+      },
+      "package": "com.schmapps.invoicesandexpenses",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "invoicesandexpenses.com",
+              "pathPrefix": "/invoice"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "scheme": "invoicesandexpenses",
+    "plugins": [
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.schmapps.invoicesandexpenses",
+          "enableGooglePay": false
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_EAS_PROJECT_ID"
+      }
+    }
+  }
+}
