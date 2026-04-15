@@ -16,9 +16,10 @@ import { EmptyState } from '../components/EmptyState';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { ProModal } from '../components/ProModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { colors, fontSize, spacing, globalStyles } from '../theme';
+import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { type Invoice, isPro, FREE_INVOICE_LIMIT } from '../types';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { formatCurrency } from '../utils/currency';
 
 const client = generateClient<Schema>();
 type Props = TabScreenProps<'Invoices'>;
@@ -126,6 +127,12 @@ export function InvoicesScreen({ navigation }: Props) {
 
   if (loading) return <LoadingSpinner fullScreen />;
 
+  const currency = profile?.currency ?? 'USD';
+  const totalInvoiced = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
+  const unpaidTotal = invoices
+    .filter((invoice) => invoice.status !== 'paid')
+    .reduce((sum, invoice) => sum + invoice.amount, 0);
+
   return (
     <SafeAreaView style={globalStyles.safeArea}>
       {/* Header */}
@@ -149,6 +156,22 @@ export function InvoicesScreen({ navigation }: Props) {
         </View>
       )}
 
+      {invoices.length > 0 && (
+        <View style={styles.totalStrip}>
+          <View style={styles.totalIcon}>
+            <Ionicons name="document-text-outline" size={18} color={colors.primary} />
+          </View>
+          <View style={styles.totalCopy}>
+            <Text style={styles.totalLabel}>Total invoiced</Text>
+            <Text style={styles.totalValue}>{formatCurrency(totalInvoiced, currency)}</Text>
+          </View>
+          <View style={styles.unpaidPill}>
+            <Text style={styles.unpaidLabel}>Unpaid</Text>
+            <Text style={styles.unpaidValue}>{formatCurrency(unpaidTotal, currency)}</Text>
+          </View>
+        </View>
+      )}
+
       <FlatList
         data={invoices}
         keyExtractor={(item) => item.id}
@@ -166,7 +189,7 @@ export function InvoicesScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <InvoiceCard
             invoice={item}
-            currencyCode={profile?.currency ?? 'USD'}
+            currencyCode={currency}
             onPress={() => (navigation as any).navigate('InvoiceDetail', { invoiceId: item.id })}
             onMarkPaid={() => handleTogglePaid(item)}
             onDelete={() => setDeleteTarget(item.id)}
@@ -216,5 +239,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warningLight, borderRadius: 8, borderWidth: 1, borderColor: colors.warningBorder,
   },
   limitText: { fontSize: fontSize.xs, color: colors.warning, textAlign: 'center', fontWeight: '500' },
+  totalStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+  },
+  totalIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalCopy: { flex: 1 },
+  totalLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: '600' },
+  totalValue: { fontSize: fontSize.xl, color: colors.primary, fontWeight: '700', marginTop: 2 },
+  unpaidPill: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    alignItems: 'flex-end',
+  },
+  unpaidLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontWeight: '600' },
+  unpaidValue: { fontSize: fontSize.sm, color: colors.warning, fontWeight: '700', marginTop: 2 },
   list: { padding: spacing.md, paddingTop: 0, paddingBottom: spacing['2xl'] },
 });

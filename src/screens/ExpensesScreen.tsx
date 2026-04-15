@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
@@ -11,9 +12,8 @@ import { useProfile } from '../hooks/useProfile';
 import { ExpenseCard } from '../components/ExpenseCard';
 import { EmptyState } from '../components/EmptyState';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { StatCard } from '../components/StatCard';
 import { LoadingSpinner } from '../components/LoadingSpinner';
-import { colors, fontSize, spacing, globalStyles } from '../theme';
+import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { formatCurrency } from '../utils/currency';
 import { type Expense } from '../types';
 import { enqueueSnackbar } from '../lib/snackbar';
@@ -40,6 +40,12 @@ export function ExpensesScreen({ navigation }: Props) {
   useEffect(() => {
     loadExpenses().finally(() => setLoading(false));
   }, [loadExpenses]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadExpenses();
+    }, [loadExpenses])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -80,8 +86,14 @@ export function ExpensesScreen({ navigation }: Props) {
       </View>
 
       {expenses.length > 0 && (
-        <View style={styles.totalRow}>
-          <StatCard label="Total expenses" value={formatCurrency(total, currency)} accent="error" />
+        <View style={styles.totalStrip}>
+          <View style={styles.totalIcon}>
+            <Ionicons name="receipt-outline" size={18} color={colors.error} />
+          </View>
+          <View>
+            <Text style={styles.totalLabel}>Total expenses</Text>
+            <Text style={styles.totalValue}>{formatCurrency(total, currency)}</Text>
+          </View>
         </View>
       )}
 
@@ -132,6 +144,27 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center',
   },
-  totalRow: { paddingHorizontal: spacing.md, marginBottom: spacing.sm },
+  totalStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.errorLight,
+    borderWidth: 1,
+    borderColor: colors.errorBorder,
+    borderRadius: radius.md,
+  },
+  totalIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalLabel: { fontSize: fontSize.xs, color: colors.textSecondary, fontWeight: '600' },
+  totalValue: { fontSize: fontSize.xl, color: colors.error, fontWeight: '700', marginTop: 2 },
   list: { padding: spacing.md, paddingTop: 0, paddingBottom: spacing['2xl'] },
 });

@@ -14,6 +14,7 @@ import { useSubscription } from '../providers/SubscriptionProvider';
 import { StatCard } from '../components/StatCard';
 import { InvoiceCard } from '../components/InvoiceCard';
 import { ExpenseCard } from '../components/ExpenseCard';
+import { AskAiModal } from '../components/AskAiModal';
 import { ProModal } from '../components/ProModal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
@@ -45,7 +46,10 @@ export function DashboardScreen({ navigation }: Props) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [askAiOpen, setAskAiOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [proModalVisible, setProModalVisible] = useState(false);
   const [proModalReason, setProModalReason] = useState('');
@@ -112,7 +116,15 @@ export function DashboardScreen({ navigation }: Props) {
   const handleAiSummary = async () => {
     setAiLoading(true);
     try {
-      const result = await client.queries.getAiSummary({ fyStart: selectedFyStart });
+      const result = await client.queries.getAiSummary({
+        fyStart: selectedFyStart,
+        income,
+        expenses: expenseTotal,
+        profit,
+        unpaidCount,
+        unpaidTotal,
+        currency,
+      });
       if (result.data?.summary) {
         setAiSummary(result.data.summary);
       } else if (result.data?.error) {
@@ -120,6 +132,35 @@ export function DashboardScreen({ navigation }: Props) {
       }
     } catch (err) {
       enqueueSnackbar('Failed to get AI summary', { variant: 'error' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAskAi = async (question: string) => {
+    setAiAnswer(null);
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const result = await client.queries.askAi({
+        fyStart: selectedFyStart,
+        question,
+        income,
+        expenses: expenseTotal,
+        profit,
+        unpaidCount,
+        unpaidTotal,
+        currency,
+      });
+      if (result.data?.answer) {
+        setAiAnswer(result.data.answer);
+      } else if (result.data?.error) {
+        setAiError(result.data.error);
+      } else {
+        setAiError('No answer came back. Try asking again.');
+      }
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Failed to ask AI');
     } finally {
       setAiLoading(false);
     }
@@ -281,7 +322,7 @@ export function DashboardScreen({ navigation }: Props) {
             <TouchableOpacity
               key={fy.startYear}
               style={[styles.fyChip, selectedFyStart === fy.startYear && styles.fyChipActive]}
-              onPress={() => { setSelectedFyStart(fy.startYear); setAiSummary(null); }}
+              onPress={() => { setSelectedFyStart(fy.startYear); setAiSummary(null); setAiAnswer(null); setAiError(null); }}
             >
               <Text style={[styles.fyChipText, selectedFyStart === fy.startYear && styles.fyChipTextActive]}>
                 {fy.label}
@@ -329,6 +370,21 @@ export function DashboardScreen({ navigation }: Props) {
             <Text style={styles.actionBtnText}>AI summary</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={[styles.askAiCard, aiLoading && styles.disabled]}
+          onPress={() => setAskAiOpen(true)}
+          disabled={aiLoading}
+        >
+          <View style={styles.askAiIcon}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.primary} />
+          </View>
+          <View style={styles.askAiCopy}>
+            <Text style={styles.askAiTitle}>Ask AI about {selectedFy.label}</Text>
+            <Text style={styles.askAiText}>Ask about cash flow, unpaid invoices, profit, or where to focus next.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
 
         {/* AI Summary */}
         {aiSummary && (
@@ -390,6 +446,16 @@ export function DashboardScreen({ navigation }: Props) {
         onSecondaryAction={handleRestorePurchases}
       />
 
+      <AskAiModal
+        visible={askAiOpen}
+        answer={aiAnswer}
+        error={aiError}
+        loading={aiLoading}
+        financialYearLabel={selectedFy.label}
+        onAsk={handleAskAi}
+        onClose={() => setAskAiOpen(false)}
+      />
+
       <ConfirmModal
         visible={dialog.visible}
         title={dialog.title}
@@ -448,6 +514,28 @@ const styles = StyleSheet.create({
   },
   actionBtnText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.primary },
   disabled: { opacity: 0.6 },
+  askAiCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.md,
+  },
+  askAiIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  askAiCopy: { flex: 1 },
+  askAiTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.text },
+  askAiText: { fontSize: fontSize.sm, color: colors.textSecondary, lineHeight: 18, marginTop: 2 },
   aiCard: {
     backgroundColor: colors.primaryLight, borderRadius: radius.lg, padding: spacing.md,
     borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md,

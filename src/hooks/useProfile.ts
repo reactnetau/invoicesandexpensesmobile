@@ -8,7 +8,7 @@ const client = generateClient<Schema>();
 
 export function useProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchProfile = useCallback(async () => {

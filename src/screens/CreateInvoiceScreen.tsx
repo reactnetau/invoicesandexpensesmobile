@@ -55,6 +55,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [profileChecked, setProfileChecked] = useState(false);
 
   const loadClients = useCallback(async () => {
     const result = await client.models.Client.list();
@@ -64,16 +65,17 @@ export function CreateInvoiceScreen({ navigation }: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchProfile();
+      setProfileChecked(false);
+      fetchProfile().finally(() => setProfileChecked(true));
       loadClients();
     }, [fetchProfile, loadClients])
   );
 
   useEffect(() => {
-    if (!profileLoading && !profile) {
+    if (profileChecked && !profileLoading && !profile) {
       setProfileModalVisible(true);
     }
-  }, [profile, profileLoading]);
+  }, [profile, profileChecked, profileLoading]);
 
   const selectClient = (c: Client) => {
     setSelectedClient(c);
