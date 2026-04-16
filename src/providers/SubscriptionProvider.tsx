@@ -127,6 +127,28 @@ function describeOfferingSetup(offerings: PurchasesOfferings | null) {
   return 'No subscription package is configured in RevenueCat.';
 }
 
+function ensurePurchasesCanStart() {
+  if (Platform.OS === 'ios' && Constants.isDevice === false) {
+    throw new Error('Subscriptions cannot be purchased in this iOS Simulator build. Use TestFlight or a development build on a real iPhone with a sandbox Apple account to test purchases.');
+  }
+}
+
+async function withRevenueCatTimeout<T>(promise: Promise<T>, message: string, timeoutMs = 30000) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => {
+          reject(new Error(message));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function syncSubscriptionState(appUserId: string, customerInfo: CustomerInfo, entitlementId: string) {
   const entitlement = customerInfo.entitlements.active[entitlementId] ?? null;
   await client.mutations.syncSubscriptionState({
@@ -177,8 +199,8 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
     try {
       await ensureConfigured(appUserId);
       const [nextOfferings, nextCustomerInfo] = await Promise.all([
-        Purchases.getOfferings(),
-        Purchases.getCustomerInfo(),
+        withRevenueCatTimeout(Purchases.getOfferings(), 'RevenueCat offerings did not load. Check your App Store product metadata and RevenueCat offering setup.'),
+        withRevenueCatTimeout(Purchases.getCustomerInfo(), 'RevenueCat customer info did not load. Check your network connection and RevenueCat SDK key.'),
       ]);
       setOfferings(nextOfferings);
       setCustomerInfo(nextCustomerInfo);
@@ -206,12 +228,17 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
   }, [appUserId, entitlementId]);
 
   const purchaseCurrentPackage = async () => {
+    ensurePurchasesCanStart();
+
     let nextOfferings = offerings;
     let currentOffering = getPreferredOffering(nextOfferings);
     let nextPackage = getPreferredPackage(currentOffering);
 
     if (!nextPackage) {
-      nextOfferings = await Purchases.getOfferings();
+      nextOfferings = await withRevenueCatTimeout(
+        Purchases.getOfferings(),
+        'RevenueCat offerings did not load. Check your App Store product metadata and RevenueCat offering setup.'
+      );
       setOfferings(nextOfferings);
       currentOffering = getPreferredOffering(nextOfferings);
       nextPackage = getPreferredPackage(currentOffering);
@@ -224,7 +251,11 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
     setPurchaseLoading(true);
     setError(null);
     try {
-      const result = await Purchases.purchasePackage(nextPackage);
+      const result = await withRevenueCatTimeout(
+        Purchases.purchasePackage(nextPackage),
+        'The purchase did not finish. Close the purchase sheet if it is open, check your sandbox account, then try again.',
+        120000
+      );
       setCustomerInfo(result.customerInfo);
       await syncSubscriptionState(appUserId, result.customerInfo, entitlementId);
       return result.customerInfo;
@@ -237,7 +268,11 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
     setRestoreLoading(true);
     setError(null);
     try {
-      const nextCustomerInfo = await Purchases.restorePurchases();
+      const nextCustomerInfo = await withRevenueCatTimeout(
+        Purchases.restorePurchases(),
+        'Restore purchases did not finish. Check your sandbox account and try again.',
+        120000
+      );
       setCustomerInfo(nextCustomerInfo);
       await syncSubscriptionState(appUserId, nextCustomerInfo, entitlementId);
       return nextCustomerInfo;
