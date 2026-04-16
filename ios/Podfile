@@ -62,5 +62,15 @@ target 'InvoicesExpenses' do
         end
       end
     end
+
+    # Newer Xcode/Clang versions compile React Native's fmt pod as C++20,
+    # which can fail on fmt's compile-time format string checks.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'fmt'
+
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+      end
+    end
   end
 end
