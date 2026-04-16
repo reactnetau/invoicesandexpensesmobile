@@ -31,6 +31,9 @@ echo "Installing JavaScript dependencies..."
 yarn install --frozen-lockfile
 
 cd "$IOS_DIR"
+rm -f .xcode.env.local
+printf 'export NODE_BINARY=%s\n' "$(command -v node)" > .xcode.env
+
 echo "Installing CocoaPods dependencies..."
 pod install --repo-update
 
