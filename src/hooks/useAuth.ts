@@ -11,6 +11,7 @@ import {
   AuthError,
 } from 'aws-amplify/auth';
 import { ensureCurrentUserProfile, ensureUserProfile } from '../services/profile';
+import { enqueueSnackbar } from '../lib/snackbar';
 
 export interface AuthUser {
   userId: string;
@@ -59,20 +60,42 @@ export function useAuth() {
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
-      const result = await signIn({
-        username: email,
-        password,
-        options: {
-          authFlowType: 'USER_PASSWORD_AUTH',
-        },
-      });
-      if (result.isSignedIn) {
-        try {
-          await ensureUserProfile(email, 'AUD');
-        } catch (err) {
-          console.warn('[useAuth] profile initialization failed', err);
+      try {
+        const result = await signIn({ username: email, password });
+        if (result.isSignedIn) {
+          try {
+            await ensureUserProfile(email, 'AUD');
+          } catch (err) {
+            console.warn('[useAuth] profile initialization failed', err);
+          }
+          await refresh();
+          enqueueSnackbar('Signed in', { variant: 'success' });
+        } else {
+          // Cognito returned a challenge — surface it so the user isn't left staring at a blank screen
+          switch (result.nextStep.signInStep) {
+            case 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED':
+              enqueueSnackbar('New password required', {
+                variant: 'info',
+                description: 'Please set a new password to continue.',
+              });
+              break;
+            case 'CONFIRM_SIGN_IN_WITH_TOTP_CODE':
+            case 'CONFIRM_SIGN_IN_WITH_EMAIL_CODE':
+              enqueueSnackbar('Verification required', {
+                variant: 'info',
+                description: 'A code has been sent — enter it to finish signing in.',
+              });
+              break;
+            default:
+              enqueueSnackbar('Additional step required', {
+                variant: 'info',
+                description: result.nextStep.signInStep,
+              });
+          }
         }
-        await refresh();
+      } catch (err) {
+        enqueueSnackbar('Sign in failed', { variant: 'error', description: parseAuthError(err) });
+        throw err;
       }
     },
     [refresh]
@@ -80,42 +103,82 @@ export function useAuth() {
 
   const register = useCallback(
     async (email: string, password: string, currency = 'USD'): Promise<{ needsConfirmation: boolean }> => {
-      const result = await signUp({
-        username: email,
-        password,
-        options: {
-          userAttributes: { email },
-          clientMetadata: { currency },
-        },
-      });
-      return { needsConfirmation: result.nextStep.signUpStep === 'CONFIRM_SIGN_UP' };
+      try {
+        const result = await signUp({
+          username: email,
+          password,
+          options: {
+            userAttributes: { email },
+            clientMetadata: { currency },
+          },
+        });
+        const needsConfirmation = result.nextStep.signUpStep === 'CONFIRM_SIGN_UP';
+        if (needsConfirmation) {
+          enqueueSnackbar('Verification code sent', {
+            variant: 'success',
+            description: 'Check your email to verify your account.',
+          });
+        }
+        return { needsConfirmation };
+      } catch (err) {
+        enqueueSnackbar('Sign up failed', { variant: 'error', description: parseAuthError(err) });
+        throw err;
+      }
     },
     []
   );
 
   const confirmEmail = useCallback(
     async (email: string, code: string): Promise<void> => {
-      await confirmSignUp({ username: email, confirmationCode: code });
+      try {
+        await confirmSignUp({ username: email, confirmationCode: code });
+        enqueueSnackbar('Email verified', {
+          variant: 'success',
+          description: 'You can now sign in to your account.',
+        });
+      } catch (err) {
+        enqueueSnackbar('Verification failed', { variant: 'error', description: parseAuthError(err) });
+        throw err;
+      }
     },
     []
   );
 
   const logout = useCallback(async (): Promise<void> => {
-    await signOut();
-    setUser(null);
+    try {
+      await signOut();
+      setUser(null);
+    } catch (err) {
+      enqueueSnackbar('Sign out failed', { variant: 'error', description: parseAuthError(err) });
+      throw err;
+    }
   }, []);
 
   const forgotPassword = useCallback(async (email: string): Promise<void> => {
-    await resetPassword({ username: email });
+    try {
+      await resetPassword({ username: email });
+      enqueueSnackbar('Reset code sent', {
+        variant: 'success',
+        description: `We sent a verification code to ${email}.`,
+      });
+    } catch (err) {
+      enqueueSnackbar('Failed to send reset code', { variant: 'error', description: parseAuthError(err) });
+      throw err;
+    }
   }, []);
 
   const confirmForgotPassword = useCallback(
     async (email: string, code: string, newPassword: string): Promise<void> => {
-      await confirmResetPassword({
-        username: email,
-        confirmationCode: code,
-        newPassword,
-      });
+      try {
+        await confirmResetPassword({ username: email, confirmationCode: code, newPassword });
+        enqueueSnackbar('Password reset', {
+          variant: 'success',
+          description: 'Your password has been updated. You can now sign in.',
+        });
+      } catch (err) {
+        enqueueSnackbar('Password reset failed', { variant: 'error', description: parseAuthError(err) });
+        throw err;
+      }
     },
     []
   );

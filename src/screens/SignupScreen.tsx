@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 import { CURRENCIES } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
@@ -29,24 +29,27 @@ export function SignupScreen({ navigation }: Props) {
   const [currency, setCurrency] = useState('AUD');
   const [currencyPickerVisible, setCurrencyPickerVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const selectedCurrency = CURRENCIES.find((c) => c.code === currency)!;
 
   const handleSignup = async () => {
-    if (!email.trim()) return setError('Email is required.');
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
-    setError(null);
+    if (!email.trim()) {
+      enqueueSnackbar('Email required', { variant: 'error', description: 'Please enter your email address.' });
+      return;
+    }
+    if (password.length < 8) {
+      enqueueSnackbar('Password too short', { variant: 'error', description: 'Password must be at least 8 characters.' });
+      return;
+    }
     setLoading(true);
     try {
       const result = await register(email.trim().toLowerCase(), password, currency);
       if (result.needsConfirmation) {
-        enqueueSnackbar('Verification code sent', { variant: 'success', description: 'Check your email to verify your account.' });
         navigation.navigate('ConfirmSignup', { email: email.trim().toLowerCase() });
       }
       // If no confirmation needed, RootNavigator handles the transition
-    } catch (err) {
-      enqueueSnackbar('Sign up failed', { variant: 'error', description: parseAuthError(err) });
+    } catch {
+      // error already shown by useAuth
     } finally {
       setLoading(false);
     }
@@ -61,12 +64,6 @@ export function SignupScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Free to start — no credit card required</Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Email</Text>
@@ -170,15 +167,6 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
   subtitle: { fontSize: fontSize.base, color: colors.textSecondary, marginBottom: spacing.xl },
-  errorBox: {
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.errorBorder,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   currencyPicker: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   currencyText: { fontSize: fontSize.base, color: colors.text },
   disabled: { opacity: 0.6 },

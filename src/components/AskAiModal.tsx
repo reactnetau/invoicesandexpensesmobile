@@ -1,12 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -27,16 +24,15 @@ const SUGGESTIONS = [
   'How is my cash flow looking?',
   'What should I focus on next?',
   'How much unpaid work is outstanding?',
+  'Are expenses too high for this year?',
+  'What is my profit position?',
+  'How much income has actually been paid?',
+  'What should I chase up first?',
+  'Give me one practical next step.',
 ];
 
 export function AskAiModal({ visible, answer, error, loading, financialYearLabel, onAsk, onClose }: Props) {
-  const [question, setQuestion] = useState('');
-
-  useEffect(() => {
-    if (!visible) setQuestion('');
-  }, [visible]);
-
-  const submit = (nextQuestion = question) => {
+  const submit = (nextQuestion: string) => {
     const trimmed = nextQuestion.trim();
     if (!trimmed || loading) return;
     onAsk(trimmed);
@@ -44,10 +40,7 @@ export function AskAiModal({ visible, answer, error, loading, financialYearLabel
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        style={styles.overlay}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
+      <View style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <View style={styles.header}>
@@ -60,44 +53,19 @@ export function AskAiModal({ visible, answer, error, loading, financialYearLabel
             </TouchableOpacity>
           </View>
 
-          <TextInput
-            style={styles.input}
-            value={question}
-            onChangeText={setQuestion}
-            placeholder="Ask about income, expenses, profit, or unpaid invoices"
-            placeholderTextColor={colors.textMuted}
-            multiline
-            maxLength={500}
-            returnKeyType="send"
-          />
-
+          <Text style={styles.promptLabel}>Choose a question</Text>
           <View style={styles.suggestions}>
             {SUGGESTIONS.map((suggestion) => (
               <TouchableOpacity
                 key={suggestion}
                 style={styles.suggestion}
-                onPress={() => {
-                  setQuestion(suggestion);
-                  submit(suggestion);
-                }}
+                onPress={() => submit(suggestion)}
                 disabled={loading}
               >
                 <Text style={styles.suggestionText}>{suggestion}</Text>
               </TouchableOpacity>
             ))}
           </View>
-
-          <TouchableOpacity
-            style={[globalStyles.primaryButton, loading && styles.disabled]}
-            onPress={() => submit()}
-            disabled={loading || !question.trim()}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={globalStyles.primaryButtonText}>Ask</Text>
-            )}
-          </TouchableOpacity>
 
           {(answer || error || loading) && (
             <View style={[styles.answer, error && styles.errorAnswer]}>
@@ -117,7 +85,7 @@ export function AskAiModal({ visible, answer, error, loading, financialYearLabel
             </View>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -146,17 +114,7 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xl, fontWeight: '700', color: colors.text },
   subtitle: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: 2 },
   closeButton: { padding: spacing.xs },
-  input: {
-    minHeight: 92,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    color: colors.text,
-    fontSize: fontSize.base,
-    textAlignVertical: 'top',
-    backgroundColor: colors.surfaceSecondary,
-  },
+  promptLabel: { fontSize: fontSize.sm, fontWeight: '700', color: colors.text },
   suggestions: { gap: spacing.xs },
   suggestion: {
     borderWidth: 1,

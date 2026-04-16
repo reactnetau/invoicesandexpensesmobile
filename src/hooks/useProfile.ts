@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { UserProfile } from '../types';
@@ -61,6 +61,10 @@ export function useProfile() {
     await client.models.UserProfile.delete({ id });
     setProfile(null);
   }, []);
+
+  useEffect(() => {
+    void fetchProfile();
+  }, [fetchProfile]);
 
   return { profile, loading, error, fetchProfile, createProfile, updateProfile, deleteAccount };
 }

@@ -1,7 +1,11 @@
 const buildProfile = process.env.EAS_BUILD_PROFILE ?? process.env.APP_VARIANT ?? 'development';
 const isProductionBuild = buildProfile === 'production';
-const iosBuildNumber = process.env.IOS_BUILD_NUMBER ?? '1';
-const androidVersionCode = Number.parseInt(process.env.ANDROID_VERSION_CODE ?? '1', 10);
+const buildNumbers = require('./build-numbers.json');
+const iosBuildNumber = process.env.IOS_BUILD_NUMBER ?? String(buildNumbers.iosBuildNumber ?? 1);
+const androidVersionCode = Number.parseInt(
+  process.env.ANDROID_VERSION_CODE ?? String(buildNumbers.androidVersionCode ?? 1),
+  10
+);
 const easProjectId =
   process.env.EAS_PROJECT_ID ??
   process.env.EXPO_PUBLIC_EAS_PROJECT_ID ??
@@ -14,6 +18,15 @@ const revenueCat = {
 };
 
 const plugins = [
+  [
+    'expo-build-properties',
+    {
+      android: {
+        compileSdkVersion: 35,
+        targetSdkVersion: 35,
+      },
+    },
+  ],
   !isProductionBuild
     ? [
         'expo-dev-client',

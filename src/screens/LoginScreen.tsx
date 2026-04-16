@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
-import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { useAuth } from '../hooks/useAuth';
+import { colors, fontSize, spacing, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
 
 type Props = AuthScreenProps<'Login'>;
@@ -23,23 +23,17 @@ export function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
-      setError('Please enter your email and password.');
+      enqueueSnackbar('Missing fields', { variant: 'error', description: 'Please enter your email and password.' });
       return;
     }
-    setError(null);
     setLoading(true);
     try {
       await login(email.trim().toLowerCase(), password);
-      enqueueSnackbar('Signed in', { variant: 'success' });
-      // RootNavigator re-renders when auth state changes
-    } catch (err) {
-      console.warn('[LoginScreen] sign in failed');
-      const msg = parseAuthError(err);
-      enqueueSnackbar('Sign in failed', { variant: 'error', description: msg });
+    } catch {
+      // error already shown by useAuth
     } finally {
       setLoading(false);
     }
@@ -57,12 +51,6 @@ export function LoginScreen({ navigation }: Props) {
         >
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Email</Text>
@@ -128,15 +116,6 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
   subtitle: { fontSize: fontSize.base, color: colors.textSecondary, marginBottom: spacing.xl },
-  errorBox: {
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.errorBorder,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   forgotLink: { alignSelf: 'flex-end', marginBottom: spacing.lg, marginTop: -8 },
   forgotText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '500' },
   disabled: { opacity: 0.6 },

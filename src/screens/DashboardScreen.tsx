@@ -228,8 +228,8 @@ export function DashboardScreen({ navigation }: Props) {
         setLogoutLoading(true);
         try {
           await logout();
-        } catch (err) {
-          enqueueSnackbar('Sign out failed', { variant: 'error', description: err instanceof Error ? err.message : 'Sign out failed' });
+        } catch {
+          // error already shown by useAuth
         } finally {
           setLogoutLoading(false);
         }

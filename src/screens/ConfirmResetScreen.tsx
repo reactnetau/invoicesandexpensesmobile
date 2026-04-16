@@ -5,9 +5,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
-import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { useAuth } from '../hooks/useAuth';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { colors, fontSize, spacing, globalStyles } from '../theme';
 
 type Props = AuthScreenProps<'ConfirmReset'>;
 
@@ -17,19 +17,22 @@ export function ConfirmResetScreen({ route, navigation }: Props) {
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleReset = async () => {
-    if (!code.trim()) return setError('Please enter the verification code.');
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
-    setError(null);
+    if (!code.trim()) {
+      enqueueSnackbar('Code required', { variant: 'error', description: 'Please enter the verification code.' });
+      return;
+    }
+    if (password.length < 8) {
+      enqueueSnackbar('Password too short', { variant: 'error', description: 'Password must be at least 8 characters.' });
+      return;
+    }
     setLoading(true);
     try {
       await confirmForgotPassword(email, code.trim(), password);
-      enqueueSnackbar('Password reset', { variant: 'success' });
       navigation.navigate('Login');
-    } catch (err) {
-      enqueueSnackbar('Password reset failed', { variant: 'error', description: parseAuthError(err) });
+    } catch {
+      // error already shown by useAuth
     } finally {
       setLoading(false);
     }
@@ -41,12 +44,6 @@ export function ConfirmResetScreen({ route, navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Set new password</Text>
           <Text style={styles.subtitle}>Enter the code sent to {email} and your new password.</Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Verification code</Text>
@@ -96,10 +93,5 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
   subtitle: { fontSize: fontSize.base, color: colors.textSecondary, lineHeight: 22, marginBottom: spacing.xl },
-  errorBox: {
-    backgroundColor: colors.errorLight, borderWidth: 1, borderColor: colors.errorBorder,
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   disabled: { opacity: 0.6 },
 });

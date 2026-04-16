@@ -5,9 +5,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
-import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { useAuth } from '../hooks/useAuth';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { colors, fontSize, spacing, globalStyles } from '../theme';
 
 type Props = AuthScreenProps<'ForgotPassword'>;
 
@@ -16,18 +16,18 @@ export function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!email.trim()) return setError('Please enter your email.');
-    setError(null);
+    if (!email.trim()) {
+      enqueueSnackbar('Email required', { variant: 'error', description: 'Please enter your email address.' });
+      return;
+    }
     setLoading(true);
     try {
       await forgotPassword(email.trim().toLowerCase());
-      enqueueSnackbar('Reset code sent', { variant: 'success', description: `We sent a verification code to ${email.trim().toLowerCase()}.` });
       setSent(true);
-    } catch (err) {
-      enqueueSnackbar('Failed to send reset code', { variant: 'error', description: parseAuthError(err) });
+    } catch {
+      // error already shown by useAuth
     } finally {
       setLoading(false);
     }
@@ -61,12 +61,6 @@ export function ForgotPasswordScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>
             Enter your email address and we'll send you a code to reset your password.
           </Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Email</Text>
@@ -105,11 +99,6 @@ const styles = StyleSheet.create({
   scroll: { padding: spacing.lg, paddingTop: spacing.xl },
   title: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text, marginBottom: spacing.xs },
   subtitle: { fontSize: fontSize.base, color: colors.textSecondary, lineHeight: 22, marginBottom: spacing.xl },
-  errorBox: {
-    backgroundColor: colors.errorLight, borderWidth: 1, borderColor: colors.errorBorder,
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   disabled: { opacity: 0.6 },
   successContainer: { flex: 1, padding: spacing.lg, paddingTop: spacing['2xl'], gap: spacing.md },
   successEmoji: { fontSize: 48, textAlign: 'center', marginBottom: spacing.sm },

@@ -5,35 +5,29 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
-import { useAuth, parseAuthError } from '../hooks/useAuth';
-import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
+import { useAuth } from '../hooks/useAuth';
 import { enqueueSnackbar } from '../lib/snackbar';
-import { generateClient } from 'aws-amplify/data';
-import type { Schema } from '../types/amplify-schema';
+import { colors, fontSize, spacing, globalStyles } from '../theme';
 
-const client = generateClient<Schema>();
 type Props = AuthScreenProps<'ConfirmSignup'>;
 
 export function ConfirmSignupScreen({ route, navigation }: Props) {
   const { email } = route.params;
-  const { confirmEmail, login } = useAuth();
+  const { confirmEmail } = useAuth();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleConfirm = async () => {
-    if (!code.trim()) return setError('Please enter the verification code.');
-    setError(null);
+    if (!code.trim()) {
+      enqueueSnackbar('Code required', { variant: 'error', description: 'Please enter the verification code.' });
+      return;
+    }
     setLoading(true);
     try {
       await confirmEmail(email, code.trim());
-      // After email confirmation, create the UserProfile record
-      // (We need to sign in first to have an authenticated session)
-      // The user will be prompted to sign in again since we don't have their password here
-      enqueueSnackbar('Email verified', { variant: 'success', description: 'You can now sign in to your account.' });
       navigation.navigate('Login');
-    } catch (err) {
-      enqueueSnackbar('Verification failed', { variant: 'error', description: parseAuthError(err) });
+    } catch {
+      // error already shown by useAuth
     } finally {
       setLoading(false);
     }
@@ -48,12 +42,6 @@ export function ConfirmSignupScreen({ route, navigation }: Props) {
           <Text style={styles.subtitle}>
             We sent a verification code to {email}. Enter it below to activate your account.
           </Text>
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
 
           <View style={globalStyles.inputContainer}>
             <Text style={globalStyles.label}>Verification code</Text>
@@ -95,11 +83,6 @@ const styles = StyleSheet.create({
   emoji: { fontSize: 48, textAlign: 'center', marginBottom: spacing.md },
   title: { fontSize: fontSize['2xl'], fontWeight: '700', color: colors.text, marginBottom: spacing.xs, textAlign: 'center' },
   subtitle: { fontSize: fontSize.base, color: colors.textSecondary, lineHeight: 22, marginBottom: spacing.xl, textAlign: 'center' },
-  errorBox: {
-    backgroundColor: colors.errorLight, borderWidth: 1, borderColor: colors.errorBorder,
-    borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.md,
-  },
-  errorText: { fontSize: fontSize.sm, color: colors.error },
   codeInput: { textAlign: 'center', fontSize: fontSize.xl, letterSpacing: 8 },
   disabled: { opacity: 0.6 },
   backLink: { padding: spacing.md, alignItems: 'center', marginTop: spacing.sm },

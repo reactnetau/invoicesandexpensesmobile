@@ -90,12 +90,41 @@ function getPreferredOffering(offerings: PurchasesOfferings | null) {
   if (preferredOfferingId && offerings.all[preferredOfferingId]) {
     return offerings.all[preferredOfferingId];
   }
-  return offerings.current;
+  if (offerings.current?.availablePackages.length) {
+    return offerings.current;
+  }
+  return Object.values(offerings.all).find((offering) => offering.availablePackages.length > 0) ?? offerings.current;
 }
 
 function getPreferredPackage(offering: PurchasesOffering | null) {
   if (!offering) return null;
-  return offering.availablePackages[0] ?? null;
+  const packages = offering.availablePackages;
+  return packages.find((pkg) => pkg.packageType === 'MONTHLY')
+    ?? packages.find((pkg) => pkg.packageType === 'ANNUAL')
+    ?? packages[0]
+    ?? null;
+}
+
+function describeOfferingSetup(offerings: PurchasesOfferings | null) {
+  const preferredOfferingId = getRevenueCatExtra().offeringId;
+  const offeringIds = offerings ? Object.keys(offerings.all) : [];
+  const packageCount = offerings
+    ? Object.values(offerings.all).reduce((count, offering) => count + offering.availablePackages.length, 0)
+    : 0;
+
+  if (!offerings || offeringIds.length === 0) {
+    return 'No RevenueCat offerings were returned. Create an offering in RevenueCat, attach your Google Play subscription product to a package, and mark the offering as Current.';
+  }
+
+  if (preferredOfferingId && !offerings.all[preferredOfferingId]) {
+    return `RevenueCat offering "${preferredOfferingId}" was not found. Available offerings: ${offeringIds.join(', ')}.`;
+  }
+
+  if (packageCount === 0) {
+    return `RevenueCat returned offering${offeringIds.length === 1 ? '' : 's'} (${offeringIds.join(', ')}), but no packages. Add your Google Play subscription product to a package in the offering.`;
+  }
+
+  return 'No subscription package is configured in RevenueCat.';
 }
 
 async function syncSubscriptionState(appUserId: string, customerInfo: CustomerInfo, entitlementId: string) {
@@ -177,10 +206,19 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
   }, [appUserId, entitlementId]);
 
   const purchaseCurrentPackage = async () => {
-    const currentOffering = getPreferredOffering(offerings);
-    const nextPackage = getPreferredPackage(currentOffering);
+    let nextOfferings = offerings;
+    let currentOffering = getPreferredOffering(nextOfferings);
+    let nextPackage = getPreferredPackage(currentOffering);
+
     if (!nextPackage) {
-      throw new Error('No subscription package is configured in RevenueCat.');
+      nextOfferings = await Purchases.getOfferings();
+      setOfferings(nextOfferings);
+      currentOffering = getPreferredOffering(nextOfferings);
+      nextPackage = getPreferredPackage(currentOffering);
+    }
+
+    if (!nextPackage) {
+      throw new Error(describeOfferingSetup(nextOfferings));
     }
 
     setPurchaseLoading(true);
