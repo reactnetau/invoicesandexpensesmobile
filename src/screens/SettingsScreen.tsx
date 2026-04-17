@@ -1,15 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Modal, FlatList, KeyboardAvoidingView, Platform,
+  Image, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
-import { fetchUserAttributes } from 'aws-amplify/auth';
+import { fetchUserAttributes, fetchAuthSession } from 'aws-amplify/auth';
+import { uploadData, getUrl, remove } from 'aws-amplify/storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
+import { useSubscription } from '../providers/SubscriptionProvider';
 import { ensureUserProfile } from '../services/profile';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CURRENCIES } from '../types';
@@ -21,12 +26,20 @@ type Props = AppScreenProps<'Settings'>;
 
 export function SettingsScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
+  const {
+    isSubscriptionActive,
+    openManagementUrl,
+    restorePurchases,
+    restoreLoading,
+  } = useSubscription();
   const [saving, setSaving] = useState(false);
   const [payidSaving, setPayidSaving] = useState(false);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [payidLoading, setPayidLoading] = useState(false);
   const [payidDecrypted, setPayidDecrypted] = useState<string | null>(null);
   const [payidVisible, setPayidVisible] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoLoading, setLogoLoading] = useState(false);
 
   const [form, setForm] = useState({
     currency: 'AUD',
@@ -37,6 +50,16 @@ export function SettingsScreen({ navigation }: Props) {
     abn: '',
     newPayid: '',
   });
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerLeft: () => (
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingHorizontal: 12 }}>
+          <Ionicons name="chevron-back" size={24} color={colors.primary} />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   useEffect(() => {
     fetchProfile();
@@ -56,21 +79,151 @@ export function SettingsScreen({ navigation }: Props) {
     }
   }, [profile]);
 
+  // Fetch a short-lived signed URL whenever the stored logo key changes.
+  useEffect(() => {
+    if (!profile?.companyLogoKey) {
+      setLogoUrl(null);
+      return;
+    }
+    getUrl({ path: profile.companyLogoKey, options: { expiresIn: 3600, validateObjectExistence: false } })
+      .then(({ url }) => setLogoUrl(url.toString()))
+      .catch(() => setLogoUrl(null));
+  }, [profile?.companyLogoKey]);
+
   const set = (key: keyof typeof form) => (value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
+
+  const uploadLogoFromUri = async (uri: string, mimeType: string) => {
+    const session = await fetchAuthSession();
+    const identityId = session.identityId;
+    if (!identityId) throw new Error('No identity ID available');
+
+    const ext = mimeType === 'image/png' ? 'png' : 'jpg';
+    const newPath = `logos/${identityId}/company_logo.${ext}`;
+    const oldPath = profile!.companyLogoKey ?? null;
+
+    const response = await fetch(uri);
+    const blob = await response.blob();
+
+    await uploadData({ path: newPath, data: blob, options: { contentType: mimeType } }).result;
+    await client.models.UserProfile.update({ id: profile!.id, companyLogoKey: newPath } as any);
+
+    if (oldPath && oldPath !== newPath) {
+      try { await remove({ path: oldPath }); } catch { /* not fatal */ }
+    }
+
+    const { url } = await getUrl({ path: newPath, options: { expiresIn: 3600 } });
+    setLogoUrl(url.toString());
+    await fetchProfile();
+    enqueueSnackbar('Logo uploaded', { variant: 'success' });
+  };
+
+  const pickFromPhotos = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      enqueueSnackbar('Permission required', {
+        variant: 'error',
+        description: 'Please allow photo library access in your device settings.',
+      });
+      return;
+    }
+    const picked = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
+    if (picked.canceled || !picked.assets[0]) return;
+    const asset = picked.assets[0];
+    setLogoLoading(true);
+    try {
+      await uploadLogoFromUri(asset.uri, asset.mimeType ?? 'image/jpeg');
+    } catch (err) {
+      enqueueSnackbar('Upload failed', {
+        variant: 'error',
+        description: err instanceof Error ? err.message : 'Failed to upload logo',
+      });
+    } finally {
+      setLogoLoading(false);
+    }
+  };
+
+  const pickFromFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'image/*',
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setLogoLoading(true);
+    try {
+      await uploadLogoFromUri(asset.uri, asset.mimeType ?? 'image/jpeg');
+    } catch (err) {
+      enqueueSnackbar('Upload failed', {
+        variant: 'error',
+        description: err instanceof Error ? err.message : 'Failed to upload logo',
+      });
+    } finally {
+      setLogoLoading(false);
+    }
+  };
+
+  const handlePickLogo = () => {
+    if (!profile) return;
+    Alert.alert('Choose logo', 'Select image source', [
+      { text: 'Photos', onPress: pickFromPhotos },
+      { text: 'Files', onPress: pickFromFiles },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
+
+  const handleRemoveLogo = () => {
+    if (!profile?.companyLogoKey) return;
+    Alert.alert(
+      'Remove logo',
+      'Your company logo will be removed from future invoice PDFs.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setLogoLoading(true);
+            try {
+              // Best-effort S3 delete — don't block the UI if it fails
+              try { await remove({ path: profile.companyLogoKey! }); } catch { /* not fatal */ }
+              await client.models.UserProfile.update({ id: profile.id, companyLogoKey: null } as any);
+              setLogoUrl(null);
+              await fetchProfile();
+              enqueueSnackbar('Logo removed', { variant: 'success' });
+            } catch (err) {
+              enqueueSnackbar('Failed to remove logo', {
+                variant: 'error',
+                description: err instanceof Error ? err.message : 'Failed to remove logo',
+              });
+            } finally {
+              setLogoLoading(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   const handleSave = async () => {
     if (!profile) return;
     setSaving(true);
     try {
+      // Use null (not undefined) for cleared fields so Amplify sends an explicit
+      // null to DynamoDB and overwrites the previous value.  Passing undefined
+      // would omit the key entirely, leaving the old value in place.
       await client.models.UserProfile.update({
         id: profile.id,
         currency: form.currency,
-        businessName: form.businessName.trim() || undefined,
-        fullName: form.fullName.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        address: form.address.trim() || undefined,
-        abn: form.abn.trim() || undefined,
+        businessName: form.businessName.trim() || null,
+        fullName:     form.fullName.trim()     || null,
+        phone:        form.phone.trim()        || null,
+        address:      form.address.trim()      || null,
+        abn:          form.abn.trim()          || null,
       } as any);
       await fetchProfile();
       enqueueSnackbar('Settings updated', { variant: 'success' });
@@ -133,6 +286,31 @@ export function SettingsScreen({ navigation }: Props) {
       enqueueSnackbar('Failed to save PayID', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to save PayID' });
     } finally {
       setPayidSaving(false);
+    }
+  };
+
+  // Opens the store subscription management screen (NOT a purchase).
+  // openManagementUrl tries customerInfo.managementURL first, then a
+  // platform-specific store fallback — it never calls purchaseCurrentPackage.
+  const handleManageSubscription = async () => {
+    const opened = await openManagementUrl();
+    if (!opened) {
+      enqueueSnackbar('Subscription management is not available yet.', {
+        variant: 'info',
+        description: 'Restore purchases or check your App Store / Google Play subscriptions.',
+      });
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restorePurchases();
+      enqueueSnackbar('Purchases restored', { variant: 'success' });
+    } catch (err) {
+      enqueueSnackbar('Restore failed', {
+        variant: 'error',
+        description: err instanceof Error ? err.message : 'Restore failed',
+      });
     }
   };
 
@@ -202,6 +380,50 @@ export function SettingsScreen({ navigation }: Props) {
           </TouchableOpacity>
 
           <View style={globalStyles.divider} />
+          <Text style={styles.sectionTitle}>Company logo</Text>
+          <Text style={styles.sectionSubtitle}>
+            Appears in the header of generated invoice PDFs.
+          </Text>
+
+          {logoUrl ? (
+            <View>
+              <View style={styles.logoPreviewBox}>
+                <Image source={{ uri: logoUrl }} style={styles.logoPreviewImage} resizeMode="contain" />
+              </View>
+              <View style={styles.logoButtonRow}>
+                <TouchableOpacity
+                  style={[globalStyles.secondaryButton, styles.logoBtn, logoLoading && styles.disabled]}
+                  onPress={handlePickLogo}
+                  disabled={logoLoading}
+                >
+                  {logoLoading
+                    ? <ActivityIndicator size="small" color={colors.text} />
+                    : <Text style={globalStyles.secondaryButtonText}>Change</Text>
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[globalStyles.dangerButton, styles.logoBtn, logoLoading && styles.disabled]}
+                  onPress={handleRemoveLogo}
+                  disabled={logoLoading}
+                >
+                  <Text style={globalStyles.dangerButtonText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={[globalStyles.secondaryButton, logoLoading && styles.disabled, { marginBottom: spacing.md }]}
+              onPress={handlePickLogo}
+              disabled={logoLoading}
+            >
+              {logoLoading
+                ? <ActivityIndicator size="small" color={colors.text} />
+                : <Text style={globalStyles.secondaryButtonText}>Upload logo</Text>
+              }
+            </TouchableOpacity>
+          )}
+
+          <View style={globalStyles.divider} />
           <Text style={styles.sectionTitle}>PayID</Text>
           <Text style={styles.sectionSubtitle}>
             Stored encrypted. Optionally included in invoice PDFs for payment instructions.
@@ -251,6 +473,31 @@ export function SettingsScreen({ navigation }: Props) {
               <Text style={globalStyles.secondaryButtonText}>Update PayID</Text>
             )}
           </TouchableOpacity>
+
+          {isSubscriptionActive && (
+            <>
+              <View style={globalStyles.divider} />
+              <Text style={styles.sectionTitle}>Subscription</Text>
+              <TouchableOpacity
+                style={styles.manageRow}
+                onPress={handleManageSubscription}
+              >
+                <Text style={styles.manageLabel}>Manage subscription</Text>
+                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[globalStyles.secondaryButton, { marginTop: spacing.sm }, restoreLoading && styles.disabled]}
+                onPress={handleRestorePurchases}
+                disabled={restoreLoading}
+              >
+                {restoreLoading ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -316,4 +563,29 @@ const styles = StyleSheet.create({
   optionRowSelected: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, borderRadius: radius.md },
   optionText: { fontSize: fontSize.base, color: colors.text },
   optionTextSelected: { color: colors.primary, fontWeight: '600' },
+  manageRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  manageLabel: { fontSize: fontSize.base, color: colors.text },
+  logoPreviewBox: {
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  logoPreviewImage: {
+    width: '100%',
+    height: 80,
+  },
+  logoButtonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  logoBtn: { flex: 1 },
 });

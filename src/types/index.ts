@@ -17,6 +17,7 @@ export interface UserProfile {
   phone?: string | null;
   address?: string | null;
   abn?: string | null;
+  companyLogoKey?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }

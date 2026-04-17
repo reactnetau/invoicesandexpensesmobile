@@ -19,6 +19,12 @@ const revenueCat = {
 
 const plugins = [
   [
+    'expo-image-picker',
+    {
+      photosPermission: 'Allow Invoices & Expenses to choose a company logo for invoice PDFs.',
+    },
+  ],
+  [
     'expo-build-properties',
     {
       android: {
@@ -59,6 +65,7 @@ export default {
       },
       infoPlist: {
         ITSAppUsesNonExemptEncryption: false,
+        NSPhotoLibraryUsageDescription: 'Allow Invoices & Expenses to choose a company logo for invoice PDFs.',
       },
       associatedDomains: ['applinks:invoicesandexpenses.com'],
     },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   RefreshControl, ActivityIndicator,
@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
+import { useFocusEffect } from '@react-navigation/native';
 import type { TabScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { useAuth } from '../hooks/useAuth';
@@ -76,19 +77,23 @@ export function DashboardScreen({ navigation }: Props) {
   const fyYears = getAvailableFinancialYears(4);
   const selectedFy = fyYears.find((fy) => fy.startYear === selectedFyStart) ?? fyYears[0];
 
+  // Invoice + expense fetch is independent of profile — empty deps so the reference
+  // is unconditionally stable and useFocusEffect fires on every focus event.
   const loadData = useCallback(async () => {
-    await fetchProfile();
     const [invResult, expResult] = await Promise.all([
-      client.models.Invoice.list(),
-      client.models.Expense.list(),
+      client.models.Invoice.list({ limit: 1000 }),
+      client.models.Expense.list({ limit: 1000 }),
     ]);
-    setInvoices((invResult.data ?? []) as unknown as Invoice[]);
-    setExpenses((expResult.data ?? []) as unknown as Expense[]);
-  }, [fetchProfile]);
+    if (invResult.data) setInvoices(invResult.data as unknown as Invoice[]);
+    if (expResult.data) setExpenses(expResult.data as unknown as Expense[]);
+  }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(
+    useCallback(() => {
+      void fetchProfile();
+      void loadData();
+    }, [fetchProfile, loadData])
+  );
 
   const fyInvoices = invoices.filter((inv) => {
     const d = new Date(inv.createdAt ?? '');
@@ -111,8 +116,11 @@ export function DashboardScreen({ navigation }: Props) {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
+    try {
+      await Promise.all([fetchProfile(), loadData()]);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleAiSummary = async () => {

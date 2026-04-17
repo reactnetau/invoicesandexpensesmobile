@@ -156,7 +156,8 @@ async function withRevenueCatTimeout<T>(promise: Promise<T>, message: string, ti
   }
 }
 
-async function syncSubscriptionState(appUserId: string, customerInfo: CustomerInfo, entitlementId: string) {
+async function syncSubscriptionState(appUserId: string | null, customerInfo: CustomerInfo, entitlementId: string) {
+  if (!appUserId) return;
   const entitlement = getActiveEntitlement(customerInfo, entitlementId);
   await client.mutations.syncSubscriptionState({
     appUserId,
@@ -167,7 +168,7 @@ async function syncSubscriptionState(appUserId: string, customerInfo: CustomerIn
   } as never);
 }
 
-async function ensureConfigured(appUserId: string) {
+async function ensureConfigured(appUserId: string | null) {
   const apiKey = getRevenueCatApiKey();
   const entitlementId = getEntitlementId();
   const configError = validateRevenueCatConfig(apiKey, entitlementId);
@@ -178,19 +179,20 @@ async function ensureConfigured(appUserId: string) {
   Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.INFO);
 
   if (!configuredApiKey || configuredApiKey !== apiKey) {
-    Purchases.configure({ apiKey, appUserID: appUserId });
+    // Configure anonymously when no user yet (landing screen pricing), or with user ID when authenticated
+    Purchases.configure({ apiKey, ...(appUserId ? { appUserID: appUserId } : {}) });
     configuredApiKey = apiKey;
     configuredAppUserId = appUserId;
     return;
   }
 
-  if (configuredAppUserId !== appUserId) {
+  if (appUserId && configuredAppUserId !== appUserId) {
     await Purchases.logIn(appUserId);
     configuredAppUserId = appUserId;
   }
 }
 
-export function SubscriptionProvider({ appUserId, children }: { appUserId: string; children: ReactNode }) {
+export function SubscriptionProvider({ appUserId, children }: { appUserId: string | null; children: ReactNode }) {
   const entitlementId = getEntitlementId();
   const [loading, setLoading] = useState(true);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
@@ -294,10 +296,40 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
   };
 
   const openManagementUrl = async () => {
-    const url = customerInfo?.managementURL;
-    if (!url) return false;
-    await Linking.openURL(url);
-    return true;
+    // Prefer the URL RevenueCat derives from customerInfo — it carries the user's
+    // active subscription context and on iOS points to App Store subscriptions,
+    // on Android to the specific Play Store subscription entry.
+    const rcUrl = customerInfo?.managementURL;
+    if (rcUrl) {
+      try {
+        await Linking.openURL(rcUrl);
+        return true;
+      } catch {
+        // RC URL failed — fall through to platform fallback below
+      }
+    }
+
+    // Platform-specific fallback: used when RC hasn't populated managementURL yet
+    // (e.g. first run, sandbox environment, or RC didn't return a URL).
+    // iOS: opens App Store → Subscriptions via the itms-apps scheme (more
+    // reliable than the https universal link which can misroute in some builds).
+    // Android: opens Google Play Subscriptions page.
+    const fallbackUrl =
+      Platform.OS === 'ios'
+        ? 'itms-apps://apps.apple.com/account/subscriptions'
+        : 'https://play.google.com/store/account/subscriptions';
+
+    try {
+      const canOpen = await Linking.canOpenURL(fallbackUrl);
+      if (canOpen) {
+        await Linking.openURL(fallbackUrl);
+        return true;
+      }
+    } catch {
+      // ignore — return false so the caller can show a message
+    }
+
+    return false;
   };
 
   const currentOffering = useMemo(() => getPreferredOffering(offerings), [offerings]);

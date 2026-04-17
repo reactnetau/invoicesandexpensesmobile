@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { AuthScreenProps } from '../navigation/types';
+import { useSubscription } from '../providers/SubscriptionProvider';
 import { colors, fontSize, spacing, radius, shadow } from '../theme';
 
 const schmappsLogo = require('../assets/schmappslogo.png');
@@ -18,10 +19,9 @@ type Props = AuthScreenProps<'Landing'>;
 
 const POPULAR_ACTIONS = ['Invoices', 'Expenses', 'Clients', 'CSV export'];
 
-const STATS = [
+const BASE_STATS = [
   { value: '$0', label: 'Free to start' },
   { value: '5', label: 'Invoices free' },
-  { value: '$7', label: 'Pro monthly' },
   { value: '50', label: 'Founder spots' },
 ];
 
@@ -50,6 +50,13 @@ const ACTIVITY = [
 ];
 
 export function LandingScreen({ navigation }: Props) {
+  const { currentPackage } = useSubscription();
+  const proPrice = currentPackage?.product.priceString ?? null;
+
+  const stats = proPrice
+    ? [...BASE_STATS, { value: proPrice, label: 'Pro monthly' }]
+    : BASE_STATS;
+
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.scroll} bounces={false}>
@@ -105,7 +112,7 @@ export function LandingScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.statsBand}>
-          {STATS.map((stat) => (
+          {stats.map((stat) => (
             <View key={stat.label} style={styles.statItem}>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
@@ -178,7 +185,9 @@ export function LandingScreen({ navigation }: Props) {
                 <Text style={styles.badgeText}>Popular</Text>
               </View>
               <Text style={[styles.planName, styles.proText]}>Pro</Text>
-              <Text style={[styles.planPrice, styles.proText]}>$7/mo</Text>
+              {proPrice
+                ? <Text style={[styles.planPrice, styles.proText]}>{proPrice}</Text>
+                : <Text style={[styles.planPrice, styles.proText]}>Pro monthly</Text>}
               <Text style={styles.planDesc}>Unlimited invoices and CSV export</Text>
             </View>
           </View>

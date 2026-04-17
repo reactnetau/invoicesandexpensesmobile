@@ -11,6 +11,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { colors, fontSize, spacing, radius, shadow, statusBadgeStyle } from '../theme';
 import { formatCurrency, formatDate } from '../utils/currency';
 import { Ionicons } from '@expo/vector-icons';
+import { ENABLE_PUBLIC_INVOICE_URLS } from '../config/features';
 
 const schmappsLogo = require('../assets/schmappslogo.png');
 
@@ -21,11 +22,14 @@ type Props = StackScreenProps<RootStackParamList, 'PublicInvoice'>;
 
 export function PublicInvoiceScreen({ route }: Props) {
   const publicId = route.params?.publicId;
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(ENABLE_PUBLIC_INVOICE_URLS);
   const [invoice, setInvoice] = useState<any | null>(null);
-  const [notFound, setNotFound] = useState(false);
+  const [notFound, setNotFound] = useState(!ENABLE_PUBLIC_INVOICE_URLS);
 
   useEffect(() => {
+    // Do not fetch if the feature is disabled — show not-found state instead.
+    if (!ENABLE_PUBLIC_INVOICE_URLS) return;
+
     if (!publicId) {
       setNotFound(true);
       setLoading(false);

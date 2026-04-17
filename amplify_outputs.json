@@ -159,6 +159,13 @@
               "isRequired": false,
               "attributes": []
             },
+            "companyLogoKey": {
+              "name": "companyLogoKey",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
             "createdAt": {
               "name": "createdAt",
               "isArray": false,
@@ -1354,6 +1361,27 @@
         }
       }
     }
+  },
+  "storage": {
+    "aws_region": "ap-southeast-2",
+    "bucket_name": "amplify-d2abcyagvq3j4o-ma-invoicelogosbucketa6ea2c-nz4hj176jpkn",
+    "buckets": [
+      {
+        "name": "invoiceLogos",
+        "bucket_name": "amplify-d2abcyagvq3j4o-ma-invoicelogosbucketa6ea2c-nz4hj176jpkn",
+        "aws_region": "ap-southeast-2",
+        "paths": {
+          "logos/${cognito-identity.amazonaws.com:sub}/*": {
+            "entityidentity": [
+              "get",
+              "list",
+              "write",
+              "delete"
+            ]
+          }
+        }
+      }
+    ]
   },
   "version": "1.4"
 }

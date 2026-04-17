@@ -12,6 +12,7 @@ import { PublicInvoiceScreen } from '../screens/PublicInvoiceScreen';
 import { SubscriptionProvider } from '../providers/SubscriptionProvider';
 import { colors } from '../theme';
 import { ActivityIndicator, View } from 'react-native';
+import { ENABLE_PUBLIC_INVOICE_URLS } from '../config/features';
 
 const Root = createStackNavigator<RootStackParamList>();
 
@@ -23,7 +24,10 @@ const linking: LinkingOptions<RootStackParamList> = {
   ],
   config: {
     screens: {
-      PublicInvoice: 'invoice/:publicId',
+      // Only register the deep-link route when the feature is enabled.
+      // When disabled, incoming invoice/:publicId links will not be handled,
+      // and the PublicInvoice screen itself will render a not-found state.
+      ...(ENABLE_PUBLIC_INVOICE_URLS ? { PublicInvoice: 'invoice/:publicId' } : {}),
       Auth: {
         screens: {
           Login: 'login',
@@ -90,23 +94,19 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking}>
-      <Root.Navigator screenOptions={{ headerShown: false }}>
-        {authState === 'authenticated' ? (
-          <Root.Screen name="App">
-            {() => (
-              <SubscriptionProvider appUserId={currentUserId!}>
-                <AppNavigator />
-              </SubscriptionProvider>
-            )}
-          </Root.Screen>
-        ) : (
-          <Root.Screen name="Auth" component={AuthNavigator} />
-        )}
+    <SubscriptionProvider appUserId={currentUserId}>
+      <NavigationContainer linking={linking}>
+        <Root.Navigator screenOptions={{ headerShown: false }}>
+          {authState === 'authenticated' ? (
+            <Root.Screen name="App" component={AppNavigator} />
+          ) : (
+            <Root.Screen name="Auth" component={AuthNavigator} />
+          )}
 
-        {/* Public invoice — accessible without auth via deep link */}
-        <Root.Screen name="PublicInvoice" component={PublicInvoiceScreen} />
-      </Root.Navigator>
-    </NavigationContainer>
+          {/* Public invoice — accessible without auth via deep link */}
+          <Root.Screen name="PublicInvoice" component={PublicInvoiceScreen} />
+        </Root.Navigator>
+      </NavigationContainer>
+    </SubscriptionProvider>
   );
 }

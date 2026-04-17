@@ -12,21 +12,15 @@ import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { ClientCard } from '../components/ClientCard';
 import { ConfirmModal } from '../components/ConfirmModal';
+import {
+  IncludeFields, INCLUDE_FIELDS_DEFAULT, getIncludeFieldDefs, IncludeFieldsSection,
+} from '../components/IncludeFieldsSection';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
 import { type Client } from '../types';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'CreateInvoice'>;
-
-interface IncludeFields {
-  businessName: boolean;
-  fullName: boolean;
-  phone: boolean;
-  address: boolean;
-  abn: boolean;
-  payid: boolean;
-}
 
 export function CreateInvoiceScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
@@ -43,14 +37,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     return d.toISOString().split('T')[0];
   });
   const [sendEmail, setSendEmail] = useState(false);
-  const [includes, setIncludes] = useState<IncludeFields>({
-    businessName: true,
-    fullName: false,
-    phone: false,
-    address: false,
-    abn: false,
-    payid: false,
-  });
+  const [includes, setIncludes] = useState<IncludeFields>(INCLUDE_FIELDS_DEFAULT);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,9 +77,6 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     setClientEmail('');
   };
 
-  const toggleInclude = (key: keyof IncludeFields) => {
-    setIncludes((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const handleCreate = async () => {
     if (!profile) {
@@ -106,6 +90,34 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     if (sendEmail && !clientEmail.trim()) return setError('Client email is required to send invoice.');
 
     setError(null);
+
+    // Build safe includes — ensure a field is never sent as true when the
+    // corresponding profile value is missing. PayID is exempt since its
+    // availability cannot be checked client-side.
+    const safeIncludes: IncludeFields = {
+      businessName: includes.businessName && !!profile.businessName,
+      fullName:     includes.fullName     && !!profile.fullName,
+      phone:        includes.phone        && !!profile.phone,
+      address:      includes.address      && !!profile.address,
+      abn:          includes.abn          && !!profile.abn,
+      payid:        includes.payid,
+    };
+
+    // When email sending is on, surface any staleness to the user rather than
+    // silently dropping fields they thought they had selected.
+    if (sendEmail) {
+      const fieldDefs = getIncludeFieldDefs(profile);
+      const firstStale = fieldDefs.find(
+        (f) => f.key !== 'payid' && includes[f.key] && !f.available
+      );
+      if (firstStale) {
+        setIncludes(safeIncludes);
+        // The IncludeFieldsSection modal will re-appear on the next toggle attempt;
+        // here we just reset stale state and let the user correct it.
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -116,12 +128,12 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         amount: parsedAmount,
         dueDate: new Date(dueDate).toISOString(),
         sendEmail,
-        includeBusinessName: includes.businessName,
-        includeFullName: includes.fullName,
-        includePhone: includes.phone,
-        includeAddress: includes.address,
-        includeAbn: includes.abn,
-        includePayid: includes.payid,
+        includeBusinessName: safeIncludes.businessName,
+        includeFullName:     safeIncludes.fullName,
+        includePhone:        safeIncludes.phone,
+        includeAddress:      safeIncludes.address,
+        includeAbn:          safeIncludes.abn,
+        includePayid:        safeIncludes.payid,
       });
 
       const result = await issueInvoice();
@@ -146,7 +158,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         return;
       }
 
-      enqueueSnackbar('Invoice created', { variant: 'success' });
+      enqueueSnackbar(sendEmail ? 'Invoice created and emailed' : 'Invoice created', { variant: 'success' });
       navigation.goBack();
     } catch (err) {
       enqueueSnackbar('Failed to create invoice', { variant: 'error', description: err instanceof Error ? err.message : 'Failed to create invoice' });
@@ -155,7 +167,6 @@ export function CreateInvoiceScreen({ navigation }: Props) {
     }
   };
 
-  const hasProfile = !!(profile?.businessName || profile?.fullName);
   const canSubmit = !loading && !profileLoading;
 
   return (
@@ -276,30 +287,17 @@ export function CreateInvoiceScreen({ navigation }: Props) {
             </View>
           )}
 
-          {/* Include fields in PDF */}
-          {sendEmail && hasProfile && (
+          {/* Include fields in PDF — delegates to IncludeFieldsSection which shows
+              all fields, guards unavailable ones, and owns the missing-field modal. */}
+          {sendEmail && !!profile && (
             <View style={styles.includeSection}>
               <Text style={styles.includeSectionTitle}>Include in PDF & email</Text>
-              {[
-                { key: 'businessName' as const, label: 'Business name', available: !!profile?.businessName },
-                { key: 'fullName' as const, label: 'Full name', available: !!profile?.fullName },
-                { key: 'phone' as const, label: 'Phone number', available: !!profile?.phone },
-                { key: 'address' as const, label: 'Address', available: !!profile?.address },
-                { key: 'abn' as const, label: 'ABN', available: !!profile?.abn },
-                { key: 'payid' as const, label: 'PayID', available: true },
-              ]
-                .filter((f) => f.available)
-                .map((f) => (
-                  <View key={f.key} style={styles.includeRow}>
-                    <Text style={styles.includeLabel}>{f.label}</Text>
-                    <Switch
-                      value={includes[f.key]}
-                      onValueChange={() => toggleInclude(f.key)}
-                      trackColor={{ false: colors.border, true: colors.primary }}
-                      thumbColor={colors.white}
-                    />
-                  </View>
-                ))}
+              <IncludeFieldsSection
+                profile={profile}
+                includes={includes}
+                onToggle={(key) => setIncludes((prev) => ({ ...prev, [key]: !prev[key] }))}
+                onNavigateToSettings={() => navigation.navigate('Settings')}
+              />
             </View>
           )}
 
@@ -331,6 +329,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         }}
         onCancel={() => setProfileModalVisible(false)}
       />
+
     </SafeAreaView>
   );
 }
@@ -376,7 +375,5 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, gap: spacing.xs,
   },
   includeSectionTitle: { fontSize: fontSize.sm, fontWeight: '600', color: colors.textSecondary, marginBottom: spacing.xs },
-  includeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
-  includeLabel: { fontSize: fontSize.base, color: colors.text },
   disabled: { opacity: 0.6 },
 });

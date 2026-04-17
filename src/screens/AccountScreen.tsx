@@ -26,11 +26,10 @@ export function AccountScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, deleteAccount, fetchProfile } = useProfile();
   const { logout } = useAuth();
   const {
+    activeEntitlement,
     currentPackage,
     error: subscriptionError,
     loading: subscriptionLoading,
-    managementUrl,
-    openManagementUrl,
     purchaseCurrentPackage,
     purchaseLoading,
     restoreLoading,
@@ -65,22 +64,6 @@ export function AccountScreen({ navigation }: Props) {
       }
     } catch (err) {
       enqueueSnackbar('Restore failed', { variant: 'error', description: err instanceof Error ? err.message : 'Restore failed' });
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    try {
-      const opened = await openManagementUrl();
-      if (!opened) {
-        enqueueSnackbar('Management unavailable', {
-          variant: 'info',
-          description: 'No management URL is available until an in-app subscription has been purchased.',
-        });
-        return;
-      }
-      await fetchProfile();
-    } catch (err) {
-      enqueueSnackbar('Management unavailable', { variant: 'error', description: err instanceof Error ? err.message : 'Unable to open subscription management' });
     }
   };
 
@@ -126,7 +109,6 @@ export function AccountScreen({ navigation }: Props) {
   const badge = statusBadgeStyle(userIsPro ? 'active' : profile?.subscriptionStatus ?? 'inactive');
   const subscriptionPriceLabel = currentPackage?.product.priceString ?? null;
   const upgradeLabel = subscriptionPriceLabel ? `Subscribe ${subscriptionPriceLabel}` : 'Subscribe to Pro';
-  const showManageSubscription = !profile?.isFoundingMember && (userIsPro || !!managementUrl);
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
@@ -197,28 +179,18 @@ export function AccountScreen({ navigation }: Props) {
             </>
           )}
 
-          {showManageSubscription && (
-            <View style={styles.proActions}>
-              {userIsPro && (
-                <TouchableOpacity
-                  style={[globalStyles.secondaryButton, restoreLoading && { opacity: 0.6 }]}
-                  onPress={handleRestorePurchases}
-                  disabled={restoreLoading}
-                >
-                  {restoreLoading ? (
-                    <ActivityIndicator size="small" color={colors.text} />
-                  ) : (
-                    <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
-                  )}
-                </TouchableOpacity>
+          {userIsPro && !profile?.isFoundingMember && (
+            <TouchableOpacity
+              style={[globalStyles.secondaryButton, { marginTop: spacing.md }, restoreLoading && { opacity: 0.6 }]}
+              onPress={handleRestorePurchases}
+              disabled={restoreLoading}
+            >
+              {restoreLoading ? (
+                <ActivityIndicator size="small" color={colors.text} />
+              ) : (
+                <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
               )}
-              <TouchableOpacity
-                style={[globalStyles.primaryButton, !managementUrl && { opacity: 0.6 }]}
-                onPress={handleManageSubscription}
-              >
-                <Text style={globalStyles.primaryButtonText}>Manage subscription</Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           )}
 
           {profile?.isFoundingMember && (
@@ -249,7 +221,16 @@ export function AccountScreen({ navigation }: Props) {
           <Text style={styles.dangerZoneTitle}>Danger zone</Text>
           <TouchableOpacity
             style={globalStyles.dangerButton}
-            onPress={() => setDeleteModal(true)}
+            onPress={() => {
+              if (activeEntitlement?.isActive) {
+                enqueueSnackbar('Cancel your active subscription before deleting your account.', {
+                  variant: 'error',
+                  description: 'Go to Settings → Manage subscription to cancel first.',
+                });
+                return;
+              }
+              setDeleteModal(true);
+            }}
           >
             <Text style={globalStyles.dangerButtonText}>Delete account</Text>
           </TouchableOpacity>
@@ -289,7 +270,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: fontSize.base, fontWeight: '600', color: colors.text },
   subDetail: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.xs },
   freeInfo: { fontSize: fontSize.sm, color: colors.textSecondary, marginTop: spacing.sm, lineHeight: 20 },
-  proActions: { gap: spacing.sm, marginTop: spacing.md },
   foundingBadge: {
     flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,
     backgroundColor: colors.warningLight, borderRadius: radius.md, padding: spacing.sm, marginTop: spacing.md,

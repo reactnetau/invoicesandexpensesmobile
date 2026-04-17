@@ -1,21 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
+import { useFocusEffect } from '@react-navigation/native';
 import { useProfile } from '../hooks/useProfile';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
+import {
+  IncludeFields, INCLUDE_FIELDS_DEFAULT, getIncludeFieldDefs, IncludeFieldsSection,
+} from '../components/IncludeFieldsSection';
 import { colors, fontSize, spacing, radius, globalStyles, statusBadgeStyle } from '../theme';
 import { formatCurrency, formatDate } from '../utils/currency';
 import { type Invoice } from '../types';
 import { enqueueSnackbar } from '../lib/snackbar';
 import * as WebBrowser from 'expo-web-browser';
+import { ENABLE_PUBLIC_INVOICE_URLS } from '../config/features';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'InvoiceDetail'>;
@@ -24,22 +29,29 @@ const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? 'https://invoicesandexpenses.
 
 export function InvoiceDetailScreen({ route, navigation }: Props) {
   const { invoiceId } = route.params;
-  const { profile } = useProfile();
+  const { profile, fetchProfile } = useProfile();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
-  const [includes, setIncludes] = useState({
-    businessName: true, fullName: false, phone: false,
-    address: false, abn: false, payid: false,
-  });
+  const [includes, setIncludes] = useState<IncludeFields>(INCLUDE_FIELDS_DEFAULT);
 
   useEffect(() => {
     client.models.Invoice.get({ id: invoiceId }).then((r) => {
       if (r.data) setInvoice(r.data as unknown as Invoice);
     }).finally(() => setLoading(false));
   }, [invoiceId]);
+
+  // Refresh profile whenever this screen comes back into focus so that
+  // include-field availability (ABN, business name, etc.) reflects the
+  // latest Settings values — e.g. after the user taps "Go to Settings"
+  // from the IncludeFieldsSection modal and adds a missing field.
+  useFocusEffect(
+    useCallback(() => {
+      void fetchProfile();
+    }, [fetchProfile])
+  );
 
   const handleTogglePaid = async () => {
     if (!invoice) return;
@@ -68,16 +80,25 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
       enqueueSnackbar('No client email', { variant: 'error', description: 'This invoice has no client email address.' });
       return;
     }
+    // Never send a true include flag when the profile field is missing.
+    const safeIncludes: IncludeFields = {
+      businessName: includes.businessName && !!profile?.businessName,
+      fullName:     includes.fullName     && !!profile?.fullName,
+      phone:        includes.phone        && !!profile?.phone,
+      address:      includes.address      && !!profile?.address,
+      abn:          includes.abn          && !!profile?.abn,
+      payid:        includes.payid,
+    };
     setEmailLoading(true);
     try {
       const result = await client.mutations.sendInvoiceEmail({
         invoiceId: invoice.id,
-        includeBusinessName: includes.businessName,
-        includeFullName: includes.fullName,
-        includePhone: includes.phone,
-        includeAddress: includes.address,
-        includeAbn: includes.abn,
-        includePayid: includes.payid,
+        includeBusinessName: safeIncludes.businessName,
+        includeFullName:     safeIncludes.fullName,
+        includePhone:        safeIncludes.phone,
+        includeAddress:      safeIncludes.address,
+        includeAbn:          safeIncludes.abn,
+        includePayid:        safeIncludes.payid,
       });
       if (result.data?.ok) {
         enqueueSnackbar('Email sent', { variant: 'success', description: `Invoice PDF sent to ${invoice.clientEmail}` });
@@ -91,7 +112,9 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const publicUrl = invoice ? `${APP_URL}/invoice/${invoice.publicId}` : '';
+  const publicUrl = ENABLE_PUBLIC_INVOICE_URLS && invoice
+    ? `${APP_URL}/invoice/${invoice.publicId}`
+    : '';
 
   const handleCopyLink = async () => {
     if (!publicUrl) return;
@@ -149,49 +172,37 @@ export function InvoiceDetailScreen({ route, navigation }: Props) {
           ))}
         </View>
 
-        {/* Public link */}
-        <View style={[globalStyles.card, { marginTop: spacing.sm }]}>
-          <Text style={styles.sectionTitle}>Public invoice link</Text>
-          <Text style={styles.publicUrl} numberOfLines={2}>{publicUrl}</Text>
-          <View style={styles.linkActions}>
-            <TouchableOpacity style={styles.linkBtn} onPress={handleCopyLink}>
-              <Ionicons name="copy-outline" size={16} color={colors.primary} />
-              <Text style={styles.linkBtnText}>Copy link</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.linkBtn}
-              onPress={() => WebBrowser.openBrowserAsync(publicUrl)}
-            >
-              <Ionicons name="open-outline" size={16} color={colors.primary} />
-              <Text style={styles.linkBtnText}>Open in browser</Text>
-            </TouchableOpacity>
+        {/* Public link — only rendered when feature flag is enabled */}
+        {ENABLE_PUBLIC_INVOICE_URLS && (
+          <View style={[globalStyles.card, { marginTop: spacing.sm }]}>
+            <Text style={styles.sectionTitle}>Public invoice link</Text>
+            <Text style={styles.publicUrl} numberOfLines={2}>{publicUrl}</Text>
+            <View style={styles.linkActions}>
+              <TouchableOpacity style={styles.linkBtn} onPress={handleCopyLink}>
+                <Ionicons name="copy-outline" size={16} color={colors.primary} />
+                <Text style={styles.linkBtnText}>Copy link</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.linkBtn}
+                onPress={() => WebBrowser.openBrowserAsync(publicUrl)}
+              >
+                <Ionicons name="open-outline" size={16} color={colors.primary} />
+                <Text style={styles.linkBtnText}>Open in browser</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Email section */}
         {invoice.clientEmail && (
           <View style={[globalStyles.card, { marginTop: spacing.sm }]}>
             <Text style={styles.sectionTitle}>Send PDF by email</Text>
-            {[
-              { key: 'businessName' as const, label: 'Business name', available: !!profile?.businessName },
-              { key: 'fullName' as const, label: 'Full name', available: !!profile?.fullName },
-              { key: 'phone' as const, label: 'Phone', available: !!profile?.phone },
-              { key: 'address' as const, label: 'Address', available: !!profile?.address },
-              { key: 'abn' as const, label: 'ABN', available: !!profile?.abn },
-              { key: 'payid' as const, label: 'PayID', available: true },
-            ]
-              .filter((f) => f.available)
-              .map((f) => (
-                <View key={f.key} style={styles.includeRow}>
-                  <Text style={styles.includeLabel}>Include {f.label}</Text>
-                  <Switch
-                    value={includes[f.key]}
-                    onValueChange={() => setIncludes((p) => ({ ...p, [f.key]: !p[f.key] }))}
-                    trackColor={{ false: colors.border, true: colors.primary }}
-                    thumbColor={colors.white}
-                  />
-                </View>
-              ))}
+            <IncludeFieldsSection
+              profile={profile}
+              includes={includes}
+              onToggle={(key) => setIncludes((prev) => ({ ...prev, [key]: !prev[key] }))}
+              onNavigateToSettings={() => navigation.navigate('Settings')}
+            />
             <TouchableOpacity
               style={[globalStyles.primaryButton, { marginTop: spacing.sm }, emailLoading && { opacity: 0.6 }]}
               onPress={handleSendEmail}
@@ -255,7 +266,5 @@ const styles = StyleSheet.create({
   linkActions: { flexDirection: 'row', gap: spacing.sm },
   linkBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: spacing.xs },
   linkBtnText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '500' },
-  includeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6 },
-  includeLabel: { fontSize: fontSize.sm, color: colors.text },
   actionsSection: { gap: spacing.sm, marginTop: spacing.md },
 });
