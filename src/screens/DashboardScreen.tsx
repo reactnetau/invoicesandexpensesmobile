@@ -106,6 +106,8 @@ export function DashboardScreen({ navigation }: Props) {
   const profit = income - expenseTotal;
   const currency = profile?.currency ?? 'USD';
   const userIsPro = (profile ? isPro(profile) : false) || isSubscriptionActive;
+  const subscriptionPriceLabel = currentPackage?.product.priceString ?? null;
+  const upgradeLabel = subscriptionPriceLabel ? `Subscribe ${subscriptionPriceLabel}` : 'Upgrade to Pro';
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -309,7 +311,7 @@ export function DashboardScreen({ navigation }: Props) {
                 <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={globalStyles.primaryButtonText}>
-                  {currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+                  {upgradeLabel}
                 </Text>
               )}
             </TouchableOpacity>
@@ -440,7 +442,8 @@ export function DashboardScreen({ navigation }: Props) {
         onUpgrade={handleUpgrade}
         onClose={() => setProModalVisible(false)}
         closeLabel="Maybe later"
-        upgradeLabel={currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+        upgradeLabel={upgradeLabel}
+        priceLabel={subscriptionPriceLabel}
         secondaryActionLabel="Restore purchases"
         secondaryActionLoading={restoreLoading}
         onSecondaryAction={handleRestorePurchases}

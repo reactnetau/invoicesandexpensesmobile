@@ -27,6 +27,11 @@ if ! command -v pod >/dev/null 2>&1; then
 fi
 
 cd "$REPO_ROOT"
+if [ ! -f amplify_outputs.json ]; then
+  echo "error: amplify_outputs.json is missing. Commit the generated Amplify outputs file or generate it before Xcode Cloud builds." >&2
+  exit 1
+fi
+
 echo "Installing JavaScript dependencies..."
 yarn install --frozen-lockfile
 

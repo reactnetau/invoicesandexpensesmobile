@@ -19,6 +19,7 @@ interface Props {
   showUpgradeAction?: boolean;
   closeLabel?: string;
   upgradeLabel?: string;
+  priceLabel?: string | null;
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
   secondaryActionLoading?: boolean;
@@ -38,6 +39,7 @@ export function ProModal({
   showUpgradeAction = true,
   closeLabel = 'Maybe later',
   upgradeLabel = 'Upgrade now',
+  priceLabel,
   secondaryActionLabel,
   onSecondaryAction,
   secondaryActionLoading = false,
@@ -50,7 +52,9 @@ export function ProModal({
 
           <View style={styles.badge}>
             <Ionicons name="star" size={16} color={colors.warning} />
-            <Text style={styles.badgeText}>Pro plan — $7/month</Text>
+            <Text style={styles.badgeText}>
+              {priceLabel ? `Pro plan — ${priceLabel}` : 'Pro plan'}
+            </Text>
           </View>
 
           <Text style={styles.title}>Upgrade to Pro</Text>

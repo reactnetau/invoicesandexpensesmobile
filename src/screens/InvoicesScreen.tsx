@@ -128,6 +128,8 @@ export function InvoicesScreen({ navigation }: Props) {
   if (loading) return <LoadingSpinner fullScreen />;
 
   const currency = profile?.currency ?? 'USD';
+  const subscriptionPriceLabel = currentPackage?.product.priceString ?? null;
+  const upgradeLabel = subscriptionPriceLabel ? `Subscribe ${subscriptionPriceLabel}` : 'Upgrade to Pro';
   const totalInvoiced = invoices.reduce((sum, invoice) => sum + invoice.amount, 0);
   const unpaidTotal = invoices
     .filter((invoice) => invoice.status !== 'paid')
@@ -215,7 +217,8 @@ export function InvoicesScreen({ navigation }: Props) {
         onUpgrade={handleUpgrade}
         onClose={() => setProModalVisible(false)}
         closeLabel="Maybe later"
-        upgradeLabel={currentPackage ? `Subscribe ${currentPackage.product.priceString}` : 'Upgrade to Pro'}
+        upgradeLabel={upgradeLabel}
+        priceLabel={subscriptionPriceLabel}
         secondaryActionLabel="Restore purchases"
         secondaryActionLoading={restoreLoading}
         onSecondaryAction={handleRestorePurchases}

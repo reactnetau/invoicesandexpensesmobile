@@ -123,10 +123,10 @@ export function AccountScreen({ navigation }: Props) {
   if ((profileLoading && !profile) || (subscriptionLoading && !profile)) return <LoadingSpinner fullScreen />;
 
   const userIsPro = (profile ? isPro(profile) : false) || isSubscriptionActive;
-  const badge = statusBadgeStyle(profile?.subscriptionStatus ?? (userIsPro ? 'active' : 'inactive'));
-  const upgradeLabel = currentPackage
-    ? `Subscribe ${currentPackage.product.priceString}`
-    : 'Subscribe to Pro';
+  const badge = statusBadgeStyle(userIsPro ? 'active' : profile?.subscriptionStatus ?? 'inactive');
+  const subscriptionPriceLabel = currentPackage?.product.priceString ?? null;
+  const upgradeLabel = subscriptionPriceLabel ? `Subscribe ${subscriptionPriceLabel}` : 'Subscribe to Pro';
+  const showManageSubscription = !profile?.isFoundingMember && (userIsPro || !!managementUrl);
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
@@ -197,19 +197,21 @@ export function AccountScreen({ navigation }: Props) {
             </>
           )}
 
-          {userIsPro && !profile?.isFoundingMember && (
+          {showManageSubscription && (
             <View style={styles.proActions}>
-              <TouchableOpacity
-                style={[globalStyles.secondaryButton, restoreLoading && { opacity: 0.6 }]}
-                onPress={handleRestorePurchases}
-                disabled={restoreLoading}
-              >
-                {restoreLoading ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
-                )}
-              </TouchableOpacity>
+              {userIsPro && (
+                <TouchableOpacity
+                  style={[globalStyles.secondaryButton, restoreLoading && { opacity: 0.6 }]}
+                  onPress={handleRestorePurchases}
+                  disabled={restoreLoading}
+                >
+                  {restoreLoading ? (
+                    <ActivityIndicator size="small" color={colors.text} />
+                  ) : (
+                    <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
+                  )}
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[globalStyles.primaryButton, !managementUrl && { opacity: 0.6 }]}
                 onPress={handleManageSubscription}

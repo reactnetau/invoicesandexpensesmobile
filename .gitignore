@@ -3,7 +3,8 @@ node_modules/
 dist/
 web-build/
 .amplify/
-amplify_outputs.json
+# amplify_outputs.json
+# !amplify_outputs.json
 amplify/.amplify/
 amplify/deployment/
 *.orig.*

@@ -127,6 +127,13 @@ function describeOfferingSetup(offerings: PurchasesOfferings | null) {
   return 'No subscription package is configured in RevenueCat.';
 }
 
+function getActiveEntitlement(customerInfo: CustomerInfo | null, entitlementId: string) {
+  if (!customerInfo) return null;
+  return customerInfo.entitlements.active[entitlementId]
+    ?? Object.values(customerInfo.entitlements.active).find((entitlement) => entitlement.isActive)
+    ?? null;
+}
+
 function ensurePurchasesCanStart() {
   if (Platform.OS === 'ios' && Constants.isDevice === false) {
     throw new Error('Subscriptions cannot be purchased in this iOS Simulator build. Use TestFlight or a development build on a real iPhone with a sandbox Apple account to test purchases.');
@@ -150,7 +157,7 @@ async function withRevenueCatTimeout<T>(promise: Promise<T>, message: string, ti
 }
 
 async function syncSubscriptionState(appUserId: string, customerInfo: CustomerInfo, entitlementId: string) {
-  const entitlement = customerInfo.entitlements.active[entitlementId] ?? null;
+  const entitlement = getActiveEntitlement(customerInfo, entitlementId);
   await client.mutations.syncSubscriptionState({
     appUserId,
     entitlementIdentifier: entitlementId,
@@ -192,6 +199,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
   const [error, setError] = useState<string | null>(null);
   const [offerings, setOfferings] = useState<PurchasesOfferings | null>(null);
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [localSubscriptionActive, setLocalSubscriptionActive] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -204,6 +212,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
       ]);
       setOfferings(nextOfferings);
       setCustomerInfo(nextCustomerInfo);
+      setLocalSubscriptionActive(!!getActiveEntitlement(nextCustomerInfo, entitlementId)?.isActive);
       setConfigured(true);
       await syncSubscriptionState(appUserId, nextCustomerInfo, entitlementId);
     } catch (err) {
@@ -218,6 +227,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
 
     const listener: CustomerInfoUpdateListener = (nextCustomerInfo) => {
       setCustomerInfo(nextCustomerInfo);
+      setLocalSubscriptionActive(!!getActiveEntitlement(nextCustomerInfo, entitlementId)?.isActive);
       void syncSubscriptionState(appUserId, nextCustomerInfo, entitlementId);
     };
 
@@ -257,6 +267,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
         120000
       );
       setCustomerInfo(result.customerInfo);
+      setLocalSubscriptionActive(!!getActiveEntitlement(result.customerInfo, entitlementId)?.isActive);
       await syncSubscriptionState(appUserId, result.customerInfo, entitlementId);
       return result.customerInfo;
     } finally {
@@ -274,6 +285,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
         120000
       );
       setCustomerInfo(nextCustomerInfo);
+      setLocalSubscriptionActive(!!getActiveEntitlement(nextCustomerInfo, entitlementId)?.isActive);
       await syncSubscriptionState(appUserId, nextCustomerInfo, entitlementId);
       return nextCustomerInfo;
     } finally {
@@ -290,7 +302,8 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
 
   const currentOffering = useMemo(() => getPreferredOffering(offerings), [offerings]);
   const currentPackage = useMemo(() => getPreferredPackage(currentOffering), [currentOffering]);
-  const activeEntitlement = customerInfo?.entitlements.active[entitlementId] ?? null;
+  const activeEntitlement = getActiveEntitlement(customerInfo, entitlementId);
+  const isSubscriptionActive = !!activeEntitlement?.isActive || localSubscriptionActive;
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
@@ -304,7 +317,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
       currentPackage,
       customerInfo,
       activeEntitlement,
-      isSubscriptionActive: !!activeEntitlement?.isActive,
+      isSubscriptionActive,
       managementUrl: customerInfo?.managementURL ?? null,
       refresh,
       purchaseCurrentPackage,
@@ -319,6 +332,7 @@ export function SubscriptionProvider({ appUserId, children }: { appUserId: strin
       customerInfo,
       error,
       loading,
+      localSubscriptionActive,
       offerings,
       purchaseLoading,
       restoreLoading,

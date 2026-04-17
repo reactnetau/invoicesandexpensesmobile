@@ -1,0 +1,1359 @@
+{
+  "auth": {
+    "user_pool_id": "ap-southeast-2_iLtnyheyZ",
+    "aws_region": "ap-southeast-2",
+    "user_pool_client_id": "4fb715k6ed90nk3mad00p0eetq",
+    "identity_pool_id": "ap-southeast-2:68e78ec2-62e4-4aa5-be76-a026f4b37271",
+    "mfa_methods": [],
+    "standard_required_attributes": [
+      "email"
+    ],
+    "username_attributes": [
+      "email"
+    ],
+    "user_verification_types": [
+      "email"
+    ],
+    "groups": [],
+    "mfa_configuration": "NONE",
+    "password_policy": {
+      "min_length": 8,
+      "require_lowercase": true,
+      "require_numbers": true,
+      "require_symbols": true,
+      "require_uppercase": true
+    },
+    "unauthenticated_identities_enabled": true
+  },
+  "data": {
+    "url": "https://dobl7lxqbfbudgmxzggtloizyq.appsync-api.ap-southeast-2.amazonaws.com/graphql",
+    "aws_region": "ap-southeast-2",
+    "api_key": "da2-k32tvgu3kjgtloixuoloqojmke",
+    "default_authorization_type": "AMAZON_COGNITO_USER_POOLS",
+    "authorization_types": [
+      "API_KEY",
+      "AWS_IAM"
+    ],
+    "model_introspection": {
+      "version": 1,
+      "models": {
+        "UserProfile": {
+          "name": "UserProfile",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "owner": {
+              "name": "owner",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "stripeCustomerId": {
+              "name": "stripeCustomerId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "revenueCatAppUserId": {
+              "name": "revenueCatAppUserId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionProvider": {
+              "name": "subscriptionProvider",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionProductId": {
+              "name": "subscriptionProductId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionStatus": {
+              "name": "subscriptionStatus",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionEndDate": {
+              "name": "subscriptionEndDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isFoundingMember": {
+              "name": "isFoundingMember",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "payidEncrypted": {
+              "name": "payidEncrypted",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "currency": {
+              "name": "currency",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "businessName": {
+              "name": "businessName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "fullName": {
+              "name": "fullName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "phone": {
+              "name": "phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "address": {
+              "name": "address",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "abn": {
+              "name": "abn",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "UserProfiles",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byOwner",
+                "queryField": "listUserProfileByOwner",
+                "fields": [
+                  "owner"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "stripeCustomerId-index",
+                "queryField": "listUserProfileByStripeCustomerId",
+                "fields": [
+                  "stripeCustomerId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "sub",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Client": {
+          "name": "Client",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "name": {
+              "name": "name",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "phone": {
+              "name": "phone",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "company": {
+              "name": "company",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "address": {
+              "name": "address",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Clients",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Invoice": {
+          "name": "Invoice",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "owner": {
+              "name": "owner",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "clientId": {
+              "name": "clientId",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": false,
+              "attributes": []
+            },
+            "clientName": {
+              "name": "clientName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "clientEmail": {
+              "name": "clientEmail",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "amount": {
+              "name": "amount",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "dueDate": {
+              "name": "dueDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "paidAt": {
+              "name": "paidAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "publicId": {
+              "name": "publicId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "isPublic": {
+              "name": "isPublic",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Invoices",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byOwner",
+                "queryField": "listInvoiceByOwner",
+                "fields": [
+                  "owner"
+                ]
+              }
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "publicId-index",
+                "queryField": "listInvoiceByPublicId",
+                "fields": [
+                  "publicId"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        },
+        "Expense": {
+          "name": "Expense",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "ID",
+              "isRequired": true,
+              "attributes": []
+            },
+            "owner": {
+              "name": "owner",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "category": {
+              "name": "category",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true,
+              "attributes": []
+            },
+            "amount": {
+              "name": "amount",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true,
+              "attributes": []
+            },
+            "date": {
+              "name": "date",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": true,
+              "attributes": []
+            },
+            "createdAt": {
+              "name": "createdAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            },
+            "updatedAt": {
+              "name": "updatedAt",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": [],
+              "isReadOnly": true
+            }
+          },
+          "syncable": true,
+          "pluralName": "Expenses",
+          "attributes": [
+            {
+              "type": "model",
+              "properties": {}
+            },
+            {
+              "type": "key",
+              "properties": {
+                "name": "byOwner",
+                "queryField": "listExpenseByOwner",
+                "fields": [
+                  "owner"
+                ]
+              }
+            },
+            {
+              "type": "auth",
+              "properties": {
+                "rules": [
+                  {
+                    "provider": "userPools",
+                    "ownerField": "owner",
+                    "allow": "owner",
+                    "identityClaim": "cognito:username",
+                    "operations": [
+                      "create",
+                      "update",
+                      "delete",
+                      "read"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "primaryKeyInfo": {
+            "isCustomPrimaryKey": false,
+            "primaryKeyFieldName": "id",
+            "sortKeyFieldNames": []
+          }
+        }
+      },
+      "enums": {},
+      "nonModels": {
+        "InitializeUserProfileReturnType": {
+          "name": "InitializeUserProfileReturnType",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isFoundingMember": {
+              "name": "isFoundingMember",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionStatus": {
+              "name": "subscriptionStatus",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "IssueInvoiceReturnType": {
+          "name": "IssueInvoiceReturnType",
+          "fields": {
+            "id": {
+              "name": "id",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "publicId": {
+              "name": "publicId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "emailSent": {
+              "name": "emailSent",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "emailError": {
+              "name": "emailError",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "errorCode": {
+              "name": "errorCode",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "SyncSubscriptionStateReturnType": {
+          "name": "SyncSubscriptionStateReturnType",
+          "fields": {
+            "ok": {
+              "name": "ok",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionStatus": {
+              "name": "subscriptionStatus",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "subscriptionEndDate": {
+              "name": "subscriptionEndDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false,
+              "attributes": []
+            },
+            "isFoundingMember": {
+              "name": "isFoundingMember",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "StripeCreateCheckoutReturnType": {
+          "name": "StripeCreateCheckoutReturnType",
+          "fields": {
+            "url": {
+              "name": "url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "StripeCreatePortalReturnType": {
+          "name": "StripeCreatePortalReturnType",
+          "fields": {
+            "url": {
+              "name": "url",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "StripeCancelSubscriptionReturnType": {
+          "name": "StripeCancelSubscriptionReturnType",
+          "fields": {
+            "ok": {
+              "name": "ok",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "SendInvoiceEmailReturnType": {
+          "name": "SendInvoiceEmailReturnType",
+          "fields": {
+            "ok": {
+              "name": "ok",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "ExportCsvReturnType": {
+          "name": "ExportCsvReturnType",
+          "fields": {
+            "content": {
+              "name": "content",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "GetAiSummaryReturnType": {
+          "name": "GetAiSummaryReturnType",
+          "fields": {
+            "summary": {
+              "name": "summary",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "income": {
+              "name": "income",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "expenses": {
+              "name": "expenses",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "profit": {
+              "name": "profit",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "unpaidCount": {
+              "name": "unpaidCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false,
+              "attributes": []
+            },
+            "unpaidTotal": {
+              "name": "unpaidTotal",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "currency": {
+              "name": "currency",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "AskAiReturnType": {
+          "name": "AskAiReturnType",
+          "fields": {
+            "answer": {
+              "name": "answer",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "GetDecryptedPayidReturnType": {
+          "name": "GetDecryptedPayidReturnType",
+          "fields": {
+            "payid": {
+              "name": "payid",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "UpdateEncryptedPayidReturnType": {
+          "name": "UpdateEncryptedPayidReturnType",
+          "fields": {
+            "ok": {
+              "name": "ok",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            },
+            "error": {
+              "name": "error",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        },
+        "GetPublicInvoiceReturnType": {
+          "name": "GetPublicInvoiceReturnType",
+          "fields": {
+            "clientName": {
+              "name": "clientName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "amount": {
+              "name": "amount",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false,
+              "attributes": []
+            },
+            "status": {
+              "name": "status",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "dueDate": {
+              "name": "dueDate",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "publicId": {
+              "name": "publicId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "businessName": {
+              "name": "businessName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "payid": {
+              "name": "payid",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false,
+              "attributes": []
+            },
+            "found": {
+              "name": "found",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false,
+              "attributes": []
+            }
+          }
+        }
+      },
+      "queries": {
+        "stripeCreateCheckout": {
+          "name": "stripeCreateCheckout",
+          "isArray": false,
+          "type": {
+            "nonModel": "StripeCreateCheckoutReturnType"
+          },
+          "isRequired": false
+        },
+        "stripeCreatePortal": {
+          "name": "stripeCreatePortal",
+          "isArray": false,
+          "type": {
+            "nonModel": "StripeCreatePortalReturnType"
+          },
+          "isRequired": false
+        },
+        "exportCsv": {
+          "name": "exportCsv",
+          "isArray": false,
+          "type": {
+            "nonModel": "ExportCsvReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "fyStart": {
+              "name": "fyStart",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            }
+          }
+        },
+        "getAiSummary": {
+          "name": "getAiSummary",
+          "isArray": false,
+          "type": {
+            "nonModel": "GetAiSummaryReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "fyStart": {
+              "name": "fyStart",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "income": {
+              "name": "income",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "expenses": {
+              "name": "expenses",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "profit": {
+              "name": "profit",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "unpaidCount": {
+              "name": "unpaidCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "unpaidTotal": {
+              "name": "unpaidTotal",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "currency": {
+              "name": "currency",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "askAi": {
+          "name": "askAi",
+          "isArray": false,
+          "type": {
+            "nonModel": "AskAiReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "fyStart": {
+              "name": "fyStart",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "question": {
+              "name": "question",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "income": {
+              "name": "income",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "expenses": {
+              "name": "expenses",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "profit": {
+              "name": "profit",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "unpaidCount": {
+              "name": "unpaidCount",
+              "isArray": false,
+              "type": "Int",
+              "isRequired": false
+            },
+            "unpaidTotal": {
+              "name": "unpaidTotal",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": false
+            },
+            "currency": {
+              "name": "currency",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "getDecryptedPayid": {
+          "name": "getDecryptedPayid",
+          "isArray": false,
+          "type": {
+            "nonModel": "GetDecryptedPayidReturnType"
+          },
+          "isRequired": false
+        },
+        "getPublicInvoice": {
+          "name": "getPublicInvoice",
+          "isArray": false,
+          "type": {
+            "nonModel": "GetPublicInvoiceReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "publicId": {
+              "name": "publicId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      },
+      "mutations": {
+        "initializeUserProfile": {
+          "name": "initializeUserProfile",
+          "isArray": false,
+          "type": {
+            "nonModel": "InitializeUserProfileReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "email": {
+              "name": "email",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "currency": {
+              "name": "currency",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            }
+          }
+        },
+        "issueInvoice": {
+          "name": "issueInvoice",
+          "isArray": false,
+          "type": {
+            "nonModel": "IssueInvoiceReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "clientId": {
+              "name": "clientId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "clientName": {
+              "name": "clientName",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "clientEmail": {
+              "name": "clientEmail",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "amount": {
+              "name": "amount",
+              "isArray": false,
+              "type": "Float",
+              "isRequired": true
+            },
+            "dueDate": {
+              "name": "dueDate",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "sendEmail": {
+              "name": "sendEmail",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeBusinessName": {
+              "name": "includeBusinessName",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeFullName": {
+              "name": "includeFullName",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includePhone": {
+              "name": "includePhone",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeAddress": {
+              "name": "includeAddress",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeAbn": {
+              "name": "includeAbn",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includePayid": {
+              "name": "includePayid",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            }
+          }
+        },
+        "syncSubscriptionState": {
+          "name": "syncSubscriptionState",
+          "isArray": false,
+          "type": {
+            "nonModel": "SyncSubscriptionStateReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "appUserId": {
+              "name": "appUserId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "entitlementIdentifier": {
+              "name": "entitlementIdentifier",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "entitlementActive": {
+              "name": "entitlementActive",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": true
+            },
+            "productIdentifier": {
+              "name": "productIdentifier",
+              "isArray": false,
+              "type": "String",
+              "isRequired": false
+            },
+            "expirationDate": {
+              "name": "expirationDate",
+              "isArray": false,
+              "type": "AWSDateTime",
+              "isRequired": false
+            }
+          }
+        },
+        "stripeCancelSubscription": {
+          "name": "stripeCancelSubscription",
+          "isArray": false,
+          "type": {
+            "nonModel": "StripeCancelSubscriptionReturnType"
+          },
+          "isRequired": false
+        },
+        "sendInvoiceEmail": {
+          "name": "sendInvoiceEmail",
+          "isArray": false,
+          "type": {
+            "nonModel": "SendInvoiceEmailReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "invoiceId": {
+              "name": "invoiceId",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            },
+            "includeBusinessName": {
+              "name": "includeBusinessName",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeFullName": {
+              "name": "includeFullName",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includePhone": {
+              "name": "includePhone",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeAddress": {
+              "name": "includeAddress",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includeAbn": {
+              "name": "includeAbn",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            },
+            "includePayid": {
+              "name": "includePayid",
+              "isArray": false,
+              "type": "Boolean",
+              "isRequired": false
+            }
+          }
+        },
+        "updateEncryptedPayid": {
+          "name": "updateEncryptedPayid",
+          "isArray": false,
+          "type": {
+            "nonModel": "UpdateEncryptedPayidReturnType"
+          },
+          "isRequired": false,
+          "arguments": {
+            "payid": {
+              "name": "payid",
+              "isArray": false,
+              "type": "String",
+              "isRequired": true
+            }
+          }
+        }
+      }
+    }
+  },
+  "version": "1.4"
+}
