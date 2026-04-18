@@ -1855,6 +1855,8 @@ PODS:
     - RevenueCat (= 5.67.1)
   - RNCAsyncStorage (1.23.1):
     - React-Core
+  - RNDateTimePicker (9.1.0):
+    - React-Core
   - RNGestureHandler (2.20.2):
     - DoubleConversion
     - glog
@@ -1998,6 +2000,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../node_modules/react-native/ReactCommon`)
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNPaywalls (from `../node_modules/react-native-purchases-ui`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
@@ -2190,6 +2193,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNDateTimePicker:
+    :path: "../node_modules/@react-native-community/datetimepicker"
   RNGestureHandler:
     :path: "../node_modules/react-native-gesture-handler"
   RNPaywalls:
@@ -2294,6 +2299,7 @@ SPEC CHECKSUMS:
   RevenueCat: 9357239a9f0978285e68983637b8a602e65c94f0
   RevenueCatUI: 6f9291da540f98baf405b5bdfc46b2d5547b704a
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
+  RNDateTimePicker: a4679e6488003e5fb68502b50ffb1b74b8b31ca0
   RNGestureHandler: 32336458ef842088a459ccfcc10b583186de2633
   RNPaywalls: 26e03d5c8ca04e9d89319eebbe8d26c14faa0a5e
   RNPurchases: 4f6b0209e2fb4152bda0d0276a2a46d2b3416752

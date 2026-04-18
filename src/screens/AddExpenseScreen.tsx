@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
-  ActivityIndicator, Modal, FlatList, KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, Modal, FlatList, KeyboardAvoidingView, Platform, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { useProfile } from '../hooks/useProfile';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { DatePickerField } from '../components/DatePickerField';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'AddExpense'>;
@@ -21,21 +22,21 @@ export function AddExpenseScreen({ navigation }: Props) {
   const [category, setCategory] = useState<ExpenseCategory>('Software');
   const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleAdd = async () => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return setError('Enter a valid amount.');
-    if (!date) return setError('Date is required.');
+    if (!date || isNaN(date.getTime())) return setError('Date is required.');
     setError(null);
     setLoading(true);
     try {
       await client.models.Expense.create({
         category,
         amount: parsedAmount,
-        date: new Date(date).toISOString(),
+        date: date.toISOString(),
       } as any);
       enqueueSnackbar('Expense added', { variant: 'success' });
       navigation.goBack();
@@ -79,17 +80,12 @@ export function AddExpenseScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={globalStyles.inputContainer}>
-            <Text style={globalStyles.label}>Date</Text>
-            <TextInput
-              style={globalStyles.input}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
-          </View>
+          <DatePickerField
+            label="Date"
+            value={date}
+            onChange={setDate}
+            maximumDate={new Date()}
+          />
 
           <TouchableOpacity
             style={[globalStyles.primaryButton, loading && styles.disabled]}

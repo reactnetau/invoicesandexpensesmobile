@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useLayoutEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   ActivityIndicator, Switch, KeyboardAvoidingView, Platform,
@@ -12,6 +12,7 @@ import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
 import { ClientCard } from '../components/ClientCard';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { DatePickerField } from '../components/DatePickerField';
 import {
   IncludeFields, INCLUDE_FIELDS_DEFAULT, getIncludeFieldDefs, IncludeFieldsSection,
 } from '../components/IncludeFieldsSection';
@@ -34,7 +35,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    return d.toISOString().split('T')[0];
+    return d;
   });
   const [sendEmail, setSendEmail] = useState(false);
   const [includes, setIncludes] = useState<IncludeFields>(INCLUDE_FIELDS_DEFAULT);
@@ -126,7 +127,7 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         clientName: clientName.trim(),
         clientEmail: clientEmail.trim() || undefined,
         amount: parsedAmount,
-        dueDate: new Date(dueDate).toISOString(),
+        dueDate: dueDate.toISOString(),
         sendEmail,
         includeBusinessName: safeIncludes.businessName,
         includeFullName:     safeIncludes.fullName,
@@ -257,17 +258,11 @@ export function CreateInvoiceScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={globalStyles.inputContainer}>
-            <Text style={globalStyles.label}>Due date *</Text>
-            <TextInput
-              style={globalStyles.input}
-              value={dueDate}
-              onChangeText={setDueDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="numbers-and-punctuation"
-            />
-          </View>
+          <DatePickerField
+            label="Due date *"
+            value={dueDate}
+            onChange={setDueDate}
+          />
 
           {/* Email sending toggle */}
           {clientEmail.trim() !== '' && (
