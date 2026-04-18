@@ -18,6 +18,7 @@ import {
 } from '../components/IncludeFieldsSection';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { logActivity } from '../lib/activity';
 import { type Client } from '../types';
 
 const client = generateClient<Schema>();
@@ -159,6 +160,11 @@ export function CreateInvoiceScreen({ navigation }: Props) {
         return;
       }
 
+      logActivity('invoice_created', 'Invoice created', {
+        description: `Invoice for ${clientName.trim()} · ${parsedAmount.toFixed(2)}`,
+        entityType: 'Invoice',
+        entityId: data?.id ?? undefined,
+      });
       enqueueSnackbar(sendEmail ? 'Invoice created and emailed' : 'Invoice created', { variant: 'success' });
       navigation.goBack();
     } catch (err) {

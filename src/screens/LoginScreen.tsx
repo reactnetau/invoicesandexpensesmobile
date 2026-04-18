@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { AuthScreenProps } from '../navigation/types';
+import { FoundingMembersWidget } from '../components/FoundingMembersWidget';
 import { useAuth } from '../hooks/useAuth';
 import { colors, fontSize, spacing, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
@@ -49,6 +50,7 @@ export function LoginScreen({ navigation }: Props) {
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
         >
+          <FoundingMembersWidget />
           <Text style={styles.title}>Welcome back</Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
 

@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { AuthScreenProps } from '../navigation/types';
+import { FoundingMembersWidget } from '../components/FoundingMembersWidget';
 import { useSubscription } from '../providers/SubscriptionProvider';
 import { colors, fontSize, spacing, radius, shadow } from '../theme';
 
@@ -69,6 +70,8 @@ export function LandingScreen({ navigation }: Props) {
             <Text style={styles.navLoginText}>Sign in</Text>
           </TouchableOpacity>
         </View>
+
+        <FoundingMembersWidget />
 
         <View style={styles.hero}>
           <Image source={schmappsLogo} style={styles.heroLogo} resizeMode="cover" />
@@ -192,9 +195,6 @@ export function LandingScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <Text style={styles.foundingNote}>
-            First 50 users get permanent Pro free as founding members.
-          </Text>
         </View>
 
         <TouchableOpacity
@@ -439,7 +439,6 @@ const styles = StyleSheet.create({
   planPrice: { color: colors.text, fontSize: fontSize.xl, fontWeight: '800', marginVertical: 4 },
   proText: { color: colors.primary },
   planDesc: { color: colors.textSecondary, fontSize: fontSize.xs, lineHeight: 17 },
-  foundingNote: { color: colors.textSecondary, fontSize: fontSize.sm, textAlign: 'center', lineHeight: 20 },
   footerButton: {
     backgroundColor: colors.primary,
     borderRadius: 8,

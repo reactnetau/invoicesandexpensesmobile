@@ -10,6 +10,7 @@ import type { AppScreenProps } from '../navigation/types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { type Client } from '../types';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { logActivity } from '../lib/activity';
 
 const client = generateClient<Schema>();
 type Props = AppScreenProps<'AddEditClient'>;
@@ -59,13 +60,18 @@ export function AddEditClientScreen({ route, navigation }: Props) {
           address: address.trim() || undefined,
         } as any);
       } else {
-        await client.models.Client.create({
+        const result = await client.models.Client.create({
           name: name.trim(),
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
           company: company.trim() || undefined,
           address: address.trim() || undefined,
         } as any);
+        logActivity('client_created', 'Client added', {
+          description: name.trim(),
+          entityType: 'Client',
+          entityId: (result.data as any)?.id ?? undefined,
+        });
       }
       enqueueSnackbar(isEditing ? 'Client updated' : 'Client added', { variant: 'success' });
       navigation.goBack();

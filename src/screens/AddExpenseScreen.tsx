@@ -12,6 +12,7 @@ import { useProfile } from '../hooks/useProfile';
 import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
 import { enqueueSnackbar } from '../lib/snackbar';
+import { logActivity } from '../lib/activity';
 import { DatePickerField } from '../components/DatePickerField';
 
 const client = generateClient<Schema>();
@@ -33,11 +34,16 @@ export function AddExpenseScreen({ navigation }: Props) {
     setError(null);
     setLoading(true);
     try {
-      await client.models.Expense.create({
+      const result = await client.models.Expense.create({
         category,
         amount: parsedAmount,
         date: date.toISOString(),
       } as any);
+      logActivity('expense_created', 'Expense added', {
+        description: `${category} · ${parsedAmount.toFixed(2)}`,
+        entityType: 'Expense',
+        entityId: (result.data as any)?.id ?? undefined,
+      });
       enqueueSnackbar('Expense added', { variant: 'success' });
       navigation.goBack();
     } catch (err) {

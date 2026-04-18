@@ -10,7 +10,6 @@ import type { Schema } from '../types/amplify-schema';
 import { useFocusEffect } from '@react-navigation/native';
 import type { TabScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
-import { useAuth } from '../hooks/useAuth';
 import { useSubscription } from '../providers/SubscriptionProvider';
 import { StatCard } from '../components/StatCard';
 import { InvoiceCard } from '../components/InvoiceCard';
@@ -33,7 +32,7 @@ type Props = TabScreenProps<'Dashboard'>;
 
 export function DashboardScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
-  const { logout } = useAuth();
+
   const {
     currentPackage,
     error: subscriptionError,
@@ -55,7 +54,6 @@ export function DashboardScreen({ navigation }: Props) {
   const [proModalVisible, setProModalVisible] = useState(false);
   const [proModalReason, setProModalReason] = useState('');
   const [csvLoading, setCsvLoading] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
   const [dialog, setDialog] = useState<{
     visible: boolean;
     title: string;
@@ -226,26 +224,6 @@ export function DashboardScreen({ navigation }: Props) {
     }
   };
 
-  const handleLogout = () => {
-    showDialog({
-      title: 'Sign out?',
-      message: 'You can sign back in any time.',
-      confirmLabel: 'Sign out',
-      cancelLabel: 'Cancel',
-      destructive: true,
-      onConfirm: async () => {
-        closeDialog();
-        setLogoutLoading(true);
-        try {
-          await logout();
-        } catch {
-          // error already shown by useAuth
-        } finally {
-          setLogoutLoading(false);
-        }
-      },
-    });
-  };
 
   if (profileLoading && !profile) return <LoadingSpinner fullScreen />;
 
@@ -274,15 +252,10 @@ export function DashboardScreen({ navigation }: Props) {
               <Ionicons name="settings-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.headerBtn, logoutLoading && styles.disabled]}
-              onPress={handleLogout}
-              disabled={logoutLoading}
+              style={styles.headerBtn}
+              onPress={() => (navigation as any).navigate('Account')}
             >
-              {logoutLoading ? (
-                <ActivityIndicator size="small" color={colors.textSecondary} />
-              ) : (
-                <Ionicons name="log-out-outline" size={22} color={colors.textSecondary} />
-              )}
+              <Ionicons name="person-circle-outline" size={22} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
         </View>

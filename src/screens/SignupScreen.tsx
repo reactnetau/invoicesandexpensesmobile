@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { AuthScreenProps } from '../navigation/types';
+import { FoundingMembersWidget } from '../components/FoundingMembersWidget';
 import { useAuth } from '../hooks/useAuth';
 import { CURRENCIES } from '../types';
 import { colors, fontSize, spacing, radius, globalStyles } from '../theme';
@@ -62,6 +63,7 @@ export function SignupScreen({ navigation }: Props) {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <FoundingMembersWidget />
           <Text style={styles.title}>Create account</Text>
           <Text style={styles.subtitle}>Free to start — no credit card required</Text>
 

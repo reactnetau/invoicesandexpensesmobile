@@ -14,6 +14,7 @@ import { ClientsScreen } from '../screens/ClientsScreen';
 import { AddEditClientScreen } from '../screens/AddEditClientScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { AccountScreen } from '../screens/AccountScreen';
+import { SnapshotScreen } from '../screens/SnapshotScreen';
 import { colors, fontSize } from '../theme';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
@@ -41,6 +42,7 @@ function TabNavigator() {
             Invoices: 'document-text-outline',
             Expenses: 'receipt-outline',
             Clients: 'people-outline',
+            Snapshot: 'pulse-outline',
           };
           return <Ionicons name={icons[route.name] ?? 'ellipse-outline'} size={size} color={color} />;
         },
@@ -50,6 +52,7 @@ function TabNavigator() {
       <Tab.Screen name="Invoices" component={InvoicesScreen} options={{ title: 'Invoices' }} />
       <Tab.Screen name="Expenses" component={ExpensesScreen} options={{ title: 'Expenses' }} />
       <Tab.Screen name="Clients" component={ClientsScreen} options={{ title: 'Clients' }} />
+      <Tab.Screen name="Snapshot" component={SnapshotScreen} options={{ title: 'Snapshot' }} />
     </Tab.Navigator>
   );
 }

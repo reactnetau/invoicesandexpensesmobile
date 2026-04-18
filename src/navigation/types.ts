@@ -18,6 +18,7 @@ export type AppTabParamList = {
   Invoices: undefined;
   Expenses: undefined;
   Clients: undefined;
+  Snapshot: undefined;
 };
 
 // ── App stack (wraps tabs + modal/push screens) ─────────────────────────────

@@ -14,7 +14,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import type { Schema } from '../types/amplify-schema';
 import type { AppScreenProps } from '../navigation/types';
 import { useProfile } from '../hooks/useProfile';
-import { useSubscription } from '../providers/SubscriptionProvider';
 import { ensureUserProfile } from '../services/profile';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { CURRENCIES } from '../types';
@@ -26,12 +25,6 @@ type Props = AppScreenProps<'Settings'>;
 
 export function SettingsScreen({ navigation }: Props) {
   const { profile, loading: profileLoading, fetchProfile } = useProfile();
-  const {
-    isSubscriptionActive,
-    openManagementUrl,
-    restorePurchases,
-    restoreLoading,
-  } = useSubscription();
   const [saving, setSaving] = useState(false);
   const [payidSaving, setPayidSaving] = useState(false);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
@@ -289,31 +282,6 @@ export function SettingsScreen({ navigation }: Props) {
     }
   };
 
-  // Opens the store subscription management screen (NOT a purchase).
-  // openManagementUrl tries customerInfo.managementURL first, then a
-  // platform-specific store fallback — it never calls purchaseCurrentPackage.
-  const handleManageSubscription = async () => {
-    const opened = await openManagementUrl();
-    if (!opened) {
-      enqueueSnackbar('Subscription management is not available yet.', {
-        variant: 'info',
-        description: 'Restore purchases or check your App Store / Google Play subscriptions.',
-      });
-    }
-  };
-
-  const handleRestorePurchases = async () => {
-    try {
-      await restorePurchases();
-      enqueueSnackbar('Purchases restored', { variant: 'success' });
-    } catch (err) {
-      enqueueSnackbar('Restore failed', {
-        variant: 'error',
-        description: err instanceof Error ? err.message : 'Restore failed',
-      });
-    }
-  };
-
   if (profileLoading && !profile) return <LoadingSpinner fullScreen />;
 
   const selectedCurrency = CURRENCIES.find((c) => c.code === form.currency);
@@ -473,31 +441,6 @@ export function SettingsScreen({ navigation }: Props) {
               <Text style={globalStyles.secondaryButtonText}>Update PayID</Text>
             )}
           </TouchableOpacity>
-
-          {isSubscriptionActive && (
-            <>
-              <View style={globalStyles.divider} />
-              <Text style={styles.sectionTitle}>Subscription</Text>
-              <TouchableOpacity
-                style={styles.manageRow}
-                onPress={handleManageSubscription}
-              >
-                <Text style={styles.manageLabel}>Manage subscription</Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.textSecondary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[globalStyles.secondaryButton, { marginTop: spacing.sm }, restoreLoading && styles.disabled]}
-                onPress={handleRestorePurchases}
-                disabled={restoreLoading}
-              >
-                {restoreLoading ? (
-                  <ActivityIndicator size="small" color={colors.text} />
-                ) : (
-                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
-                )}
-              </TouchableOpacity>
-            </>
-          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -563,12 +506,6 @@ const styles = StyleSheet.create({
   optionRowSelected: { backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, borderRadius: radius.md },
   optionText: { fontSize: fontSize.base, color: colors.text },
   optionTextSelected: { color: colors.primary, fontWeight: '600' },
-  manageRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: spacing.sm + 2,
-    borderBottomWidth: 1, borderBottomColor: colors.borderLight,
-  },
-  manageLabel: { fontSize: fontSize.base, color: colors.text },
   logoPreviewBox: {
     backgroundColor: colors.surfaceSecondary,
     borderRadius: radius.md,

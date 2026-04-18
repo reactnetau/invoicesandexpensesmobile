@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator,
+  ActivityIndicator, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,11 +34,13 @@ export function AccountScreen({ navigation }: Props) {
     purchaseLoading,
     restoreLoading,
     restorePurchases,
+    openManagementUrl,
     isSubscriptionActive,
   } = useSubscription();
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [manageLoading, setManageLoading] = useState(false);
 
   const handleUpgrade = async () => {
     try {
@@ -64,6 +66,18 @@ export function AccountScreen({ navigation }: Props) {
       }
     } catch (err) {
       enqueueSnackbar('Restore failed', { variant: 'error', description: err instanceof Error ? err.message : 'Restore failed' });
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setManageLoading(true);
+    try {
+      const opened = await openManagementUrl();
+      if (!opened) {
+        enqueueSnackbar('Could not open subscription management', { variant: 'error' });
+      }
+    } finally {
+      setManageLoading(false);
     }
   };
 
@@ -109,6 +123,7 @@ export function AccountScreen({ navigation }: Props) {
   const badge = statusBadgeStyle(userIsPro ? 'active' : profile?.subscriptionStatus ?? 'inactive');
   const subscriptionPriceLabel = currentPackage?.product.priceString ?? null;
   const upgradeLabel = subscriptionPriceLabel ? `Subscribe ${subscriptionPriceLabel}` : 'Subscribe to Pro';
+  const isWebSubscription = profile?.subscriptionProvider === 'stripe';
 
   return (
     <SafeAreaView style={globalStyles.safeArea}>
@@ -141,7 +156,7 @@ export function AccountScreen({ navigation }: Props) {
 
           {profile?.subscriptionEndDate && (
             <Text style={styles.subDetail}>
-              {userIsPro ? 'Renews' : 'Access until'}: {formatDate(profile.subscriptionEndDate)}
+              Active until: {formatDate(profile.subscriptionEndDate)}
             </Text>
           )}
 
@@ -180,17 +195,55 @@ export function AccountScreen({ navigation }: Props) {
           )}
 
           {userIsPro && !profile?.isFoundingMember && (
-            <TouchableOpacity
-              style={[globalStyles.secondaryButton, { marginTop: spacing.md }, restoreLoading && { opacity: 0.6 }]}
-              onPress={handleRestorePurchases}
-              disabled={restoreLoading}
-            >
-              {restoreLoading ? (
-                <ActivityIndicator size="small" color={colors.text} />
+            <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+              {isWebSubscription ? (
+                <View style={styles.webSubNote}>
+                  <Ionicons name="globe-outline" size={16} color={colors.primary} />
+                  <Text style={styles.webSubNoteText}>
+                    Your subscription was started on the web. To manage or cancel it, visit invoicesandexpenses.com on your browser and go to Account.
+                  </Text>
+                </View>
               ) : (
-                <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
+                <>
+                  <TouchableOpacity
+                    style={[globalStyles.secondaryButton, manageLoading && { opacity: 0.6 }]}
+                    onPress={handleManageSubscription}
+                    disabled={manageLoading}
+                  >
+                    {manageLoading ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Text style={globalStyles.secondaryButtonText}>Manage subscription</Text>
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[globalStyles.secondaryButton, manageLoading && { opacity: 0.6 }]}
+                    onPress={handleManageSubscription}
+                    disabled={manageLoading}
+                  >
+                    {manageLoading ? (
+                      <ActivityIndicator size="small" color={colors.text} />
+                    ) : (
+                      <Text style={[globalStyles.secondaryButtonText, { color: colors.error }]}>Cancel subscription</Text>
+                    )}
+                  </TouchableOpacity>
+                  <Text style={styles.cancelNote}>
+                    Cancellation is handled through the {Platform.OS === 'ios' ? 'App Store' : 'Google Play Store'}. Your access continues until the end of the billing period.
+                  </Text>
+                </>
               )}
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[globalStyles.secondaryButton, restoreLoading && { opacity: 0.6 }]}
+                onPress={handleRestorePurchases}
+                disabled={restoreLoading}
+              >
+                {restoreLoading ? (
+                  <ActivityIndicator size="small" color={colors.text} />
+                ) : (
+                  <Text style={globalStyles.secondaryButtonText}>Restore purchases</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           )}
 
           {profile?.isFoundingMember && (
@@ -281,4 +334,10 @@ const styles = StyleSheet.create({
   },
   dangerZoneTitle: { fontSize: fontSize.base, fontWeight: '700', color: colors.error },
   dangerNote: { fontSize: fontSize.xs, color: colors.error, lineHeight: 18 },
+  cancelNote: { fontSize: fontSize.xs, color: colors.textSecondary, lineHeight: 18, textAlign: 'center' },
+  webSubNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs,
+    backgroundColor: colors.primaryLight, borderRadius: radius.md, padding: spacing.sm,
+  },
+  webSubNoteText: { flex: 1, fontSize: fontSize.sm, color: colors.primary, lineHeight: 18 },
 });
